@@ -62,6 +62,7 @@ export default function Sidebar({ onNavigate }) {
       items: [
         { name: "Banner Mange", href: "/dashboard/banner", icon: Flag },
         { name: "Advertisement", href: "/dashboard/advertisement", icon: Layers },
+        { name: "Landing Page", href: "/dashboard/Landing-page", icon: Tags },
       ],
     },
     {
