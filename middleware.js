@@ -8,6 +8,10 @@ export async function middleware(req) {
   const token = await getToken({
     req,
     secret: process.env.AUTH_SECRET,
+    cookieName:
+      process.env.NODE_ENV === "production"
+        ? "__Secure-authjs.session-token"
+        : "authjs.session-token",
   });
 
   // ⚙️ Debug log (only in dev mode)
