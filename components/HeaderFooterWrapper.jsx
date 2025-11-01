@@ -11,7 +11,7 @@ export default function HeaderFooterWrapper({ children }) {
   const pathname = usePathname();
 
   // Paths where we don’t want Header/Footer
-  const hiddenPaths = ['/not-found', "/admin", "/dashboard"];
+  const hiddenPaths = ['/not-found', "/admin", "/dashboard","/landing-page"];
   const hideLayout = hiddenPaths.some((p) => pathname.startsWith(p));
 
   return (
