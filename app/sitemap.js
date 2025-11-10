@@ -2,7 +2,7 @@
 
 async function fetchProducts() {
   const res = await fetch(
-    `https://nobofit.com/api/products/client?page=1`,
+    `https://soulcarftbd.com/api/products/client?page=1`,
     {
       cache: "no-store",
     }
@@ -15,7 +15,7 @@ export default async function sitemap() {
   const products = await fetchProducts();
 
   const productUrls = products.map((product) => ({
-    url: `https://nobofit.com/products/${product.slug}`,
+    url: `https://soulcarftbd.com/products/${product.slug}`,
     lastModified: new Date().toISOString(),
     changeFrequency: "weekly",
     priority: 0.8,
@@ -23,25 +23,25 @@ export default async function sitemap() {
 
   return [
     {
-      url: "https://nobofit.com/",
+      url: "https://soulcarftbd.com/",
       lastModified: new Date().toISOString(),
       changeFrequency: "daily",
       priority: 1,
     },
     {
-      url: "https://nobofit.com/contact",
+      url: "https://soulcarftbd.com/contact",
       lastModified: new Date().toISOString(),
       changeFrequency: "daily",
       priority: 1,
     },
     {
-      url: "https://nobofit.com/about",
+      url: "https://soulcarftbd.com/about",
       lastModified: new Date().toISOString(),
       changeFrequency: "yearly",
       priority: 0.5,
     },
     {
-      url: "https://nobofit.com/products",
+      url: "https://soulcarftbd.com/products",
       lastModified: new Date().toISOString(),
       changeFrequency: "weekly",
       priority: 0.7,

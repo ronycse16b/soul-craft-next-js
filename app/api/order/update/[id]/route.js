@@ -5,10 +5,14 @@ import { NextResponse } from "next/server";
 import { adminOnlyMiddleware } from "@/lib/authMiddleware";
 import { connectDB } from "@/lib/db.config";
 import Order from "@/models/order.model";
+import { verifyAccess } from "@/lib/roleMiddleware";
 
 export async function PUT(req, { params }) {
-    const auth = await adminOnlyMiddleware(req);
-    if (auth) return auth; // unauthorized
+     const auth = await verifyAccess(req, {
+       roles: ["admin", "moderator"],
+       permission: "read",
+     });
+     if (auth instanceof Response) return auth;
   await connectDB();
 
   const { id } = await params;

@@ -68,10 +68,9 @@ export default function Sidebar({ onNavigate }) {
     {
       label: "Users",
       items: [
-        { name: "User Management", href: "/dashboard/users", icon: Users },
         {
-          name: "Roles & Permissions",
-          href: "/dashboard/roles",
+          name: " User Roles & Permissions Manage",
+          href: "/dashboard/users",
           icon: UserCog,
         },
       ],
@@ -80,8 +79,8 @@ export default function Sidebar({ onNavigate }) {
       label: "Settings",
       items: [
         {
-          name: "General Settings",
-          href: "/dashboard/settings",
+          name: "My Profile Settings",
+          href: "/dashboard/profile",
           icon: Settings,
         },
       ],
@@ -127,7 +126,7 @@ export default function Sidebar({ onNavigate }) {
           overflow-y-auto scrollbar-hide
         "
       >
-        {menuGroups.map((group) => (
+        {menuGroups?.map((group) => (
           <div key={group.label}>
             <p
               className="
@@ -157,7 +156,7 @@ export default function Sidebar({ onNavigate }) {
                       hover:bg-muted hover:text-foreground
                     `,
                       active
-                        ? "bg-primary text-primary-foreground shadow-sm"
+                        ? " text-destructive bg-destructive/10 shadow-sm"
                         : "text-muted-foreground"
                     )}
                   >

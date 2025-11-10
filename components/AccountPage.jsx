@@ -1,379 +1,463 @@
 "use client";
 
-import { useSession } from "next-auth/react";
-import React, { useState, useEffect } from "react";
+import { signOut, useSession } from "next-auth/react";
+import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "react-hot-toast";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import axios from "axios";
+import { useForm } from "react-hook-form";
+
+// ------------------------ FETCH HELPERS ------------------------
+const fetchOrders = async ({ queryKey }) => {
+  const [_key, { status, page, limit }] = queryKey;
+  const res = await axios.get(
+    `/api/order/user?status=${status}&page=${page}&limit=${limit}`
+  );
+  return res.data;
+};
+
+const fetchAddresses = async () => {
+  const res = await axios.get(`/api/user/address`);
+  return res.data;
+};
 
 const AccountPage = () => {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const queryClient = useQueryClient();
 
-  const isLoading = status === "loading";
-  const isAuthentic = status === "authenticated";
-
-  const [activeTab, setActiveTab] = useState("profile");
   const user = session?.user || {};
+  const isLoading = status === "loading";
+  const isAuthenticated = status === "authenticated";
 
-useEffect(() => {
-  if (!isLoading && !isAuthentic) {
-    router.push("/");
-  }
-}, [isLoading, isAuthentic, router]);
-
-// ✅ Initialize empty, update when session is ready
-const [profile, setProfile] = useState({
-  name: "",
-  emailOrPhone: "",
-  image: "",
-  address: "",
-  currentPassword: "",
-  newPassword: "",
-  confirmPassword: "",
-});
-
-// ✅ Update when session changes
-useEffect(() => {
-  if (user && isAuthentic) {
-    setProfile((prev) => ({
-      ...prev,
-      name: user?.name || "",
-      emailOrPhone: user?.emailOrPhone || "",
-      image: user?.image || "",
-      address: user?.address || "",
-    }));
-  }
-}, [user, isAuthentic]);
-
-  // Dummy dynamic-style data
-  const userAddresses = [
-    {
-      id: 1,
-      type: "Home",
-      addressLine: "123 Main Street, Dhaka, Bangladesh",
-      phone: "+8801712345678",
-      isDefault: true,
+  const { register, handleSubmit, setValue, watch, reset } = useForm({
+    defaultValues: {
+      name: "",
+      emailOrPhone: "",
+      currentPassword: "",
+      newPassword: "",
+      confirmPassword: "",
+      activeTab: "profile",
     },
-    {
-      id: 2,
-      type: "Office",
-      addressLine: "5th Floor, TechHub Tower, Gulshan, Dhaka",
-      phone: "+8801812345678",
-      isDefault: false,
-    },
-  ];
+  });
 
-  const orders = [
-    {
-      id: "ORD-1289",
-      date: "2025-10-03",
-      status: "Delivered",
-      total: 2450,
-    },
-    {
-      id: "ORD-1277",
-      date: "2025-09-20",
-      status: "Cancelled",
-      total: 1299,
-    },
-  ];
+  const activeTab = watch("activeTab");
+  const [page, setPage] = useState(1);
+  const limit = 5;
 
-  const wishlist = [
-    {
-      id: "P-001",
-      name: "Leather Travel Bag",
-      price: 3499,
-      image: "/bag.png",
-    },
-    {
-      id: "P-002",
-      name: "Noise Cancelling Headphones",
-      price: 8999,
-      image: "/headphones.png",
-    },
-  ];
+  // Redirect unauthenticated users
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) router.push("/auth/sign-in");
+  }, [isLoading, isAuthenticated, router]);
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setProfile((prev) => ({ ...prev, [name]: value }));
+  // Prefill user data
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      setValue("name", user.name || "");
+      setValue("emailOrPhone", user.emailOrPhone || "");
+    }
+  }, [user, isAuthenticated, setValue]);
+
+  // ------------------------ PROFILE UPDATE ------------------------
+  const onSubmit = async (data) => {
+    try {
+      if (data.newPassword && data.newPassword !== data.confirmPassword)
+        return toast.error("New passwords do not match!");
+
+      const payload = {
+        name: data.name,
+        currentPassword:
+          user?.isGoogle && !user?.hasPassword
+            ? undefined
+            : data.currentPassword,
+        newPassword: data.newPassword,
+        setPassword: user?.isGoogle && !user?.hasPassword,
+      };
+
+      const res = await axios.put(`/api/auth/profile/${user.id}`, payload);
+      if (res.data.success) {
+        toast.success("Profile updated successfully!");
+        signOut({ callbackUrl: "/auth/sign-in" });
+      } else toast.error(res.data.message || "Failed to update profile.");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Something went wrong.");
+    }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    toast.success("Profile updated successfully!");
+  // ------------------------ ORDERS ------------------------
+  const { data: ordersData } = useQuery({
+    queryKey: [
+      "orders",
+      {
+        status: activeTab === "cancellations" ? "Cancelled" : "Processing",
+        page,
+        limit,
+      },
+    ],
+    queryFn: fetchOrders,
+    keepPreviousData: true,
+  });
+
+  // ------------------------ ADDRESSES ------------------------
+  const { data: addressData, isFetching: addressLoading } = useQuery({
+    queryKey: ["addresses"],
+    queryFn: fetchAddresses,
+    enabled: activeTab === "address",
+    keepPreviousData: true,
+  });
+
+  const addAddressMutation = useMutation({
+    mutationFn: async (data) => {
+      const res = await axios.post(`/api/user/address`, data);
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(["addresses"]);
+      toast.success("Address added!");
+    },
+    onError: () => toast.error("Failed to add address"),
+  });
+
+  const updateAddressMutation = useMutation({
+    mutationFn: async ({ id, data }) => {
+      const res = await axios.put(`/api/user/address`, { id, ...data });
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(["addresses"]);
+      toast.success("Address updated!");
+    },
+    onError: () => toast.error("Update failed"),
+  });
+
+  const deleteAddressMutation = useMutation({
+    mutationFn: async (id) => {
+      const res = await axios.delete(`/api/user/address?id=${id}`);
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(["addresses"]);
+      toast.success("Address deleted!");
+    },
+    onError: () => toast.error("Delete failed"),
+  });
+
+  const setDefaultMutation = useMutation({
+    mutationFn: async (id) => {
+      const res = await axios.put(`/api/user/address`, {
+        id,
+        setDefault: true,
+      });
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(["addresses"]);
+      toast.success("Default address set!");
+    },
+    onError: () => toast.error("Failed to set default"),
+  });
+
+  // ------------------------ ADDRESS FORM ------------------------
+  const {
+    register: addressRegister,
+    handleSubmit: handleAddressSubmit,
+    reset: resetAddress,
+    formState: { errors },
+  } = useForm({
+    defaultValues: { name: "", deliveryAddress: "", phone: "", label: "Home" },
+  });
+
+  const [editingAddress, setEditingAddress] = useState(null);
+
+  const onAddressSubmit = (data) => {
+    if (editingAddress) {
+      updateAddressMutation.mutate({ id: editingAddress._id, data });
+      setEditingAddress(null);
+    } else {
+      addAddressMutation.mutate(data);
+    }
+    resetAddress({ name: "", deliveryAddress: "", phone: "", label: "Home" });
   };
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex justify-center items-center text-lg font-medium">
-        Loading profile...
-      </div>
-    );
-  }
-
-  // Sidebar groups
+  // ------------------------ SIDEBAR ------------------------
   const sidebarGroups = [
     {
       title: "Manage My Account",
       items: [
-        { id: "profile", label: "My Profile" },
+        { id: "profile", label: "Profile Settings" },
         { id: "address", label: "Address Book" },
-        { id: "payment", label: "My Payment Options" },
+        { id: "orders", label: "My Orders" },
+        { id: "cancellations", label: "Cancellations" },
       ],
-    },
-    {
-      title: "My Orders",
-      items: [
-        { id: "returns", label: "My Returns" },
-        { id: "cancellations", label: "My Cancellations" },
-      ],
-    },
-    {
-      title: "My Stuff",
-      items: [{ id: "wishlist", label: "My Wishlist" }],
     },
   ];
 
+  // ------------------------ MOBILE TAB BUTTONS ------------------------
+  const tabButtons = [
+    { id: "profile", label: "Profile" },
+    { id: "address", label: "Address" },
+    { id: "orders", label: "Orders" },
+  ];
+
+  // ------------------------ RENDER ------------------------
+  if (isLoading)
+    return (
+      <div className="min-h-[70vh] flex justify-center items-center text-lg font-medium">
+       ...
+      </div>
+    );
+
   return (
-    <div className="max-w-6xl mx-auto p-4 sm:p-6 lg:p-8 grid md:grid-cols-4 gap-6">
-      {/* Sidebar */}
-      <aside className="md:col-span-1 border-r pr-4">
-        {sidebarGroups.map((group, groupIdx) => (
-          <div key={groupIdx} className="mb-6">
-            <h3 className="text-lg font-semibold mb-2 text-gray-800">
-              {group.title}
-            </h3>
-            <ul className="space-y-2 text-sm">
-              {group.items.map((item) => (
-                <li
-                  key={item.id}
-                  onClick={() => setActiveTab(item.id)}
-                  className={`cursor-pointer rounded px-2 py-1 transition ${
-                    activeTab === item.id
-                      ? "text-red-600 font-medium bg-red-50"
-                      : "text-gray-600 hover:text-black"
-                  }`}
-                >
-                  {item.label}
-                </li>
-              ))}
-            </ul>
-          </div>
+    <div className="max-w-6xl mx-auto p-1 sm:p-6 lg:p-8">
+      {/* Mobile Tabs */}
+      <div className="flex md:hidden mb-4 border-b overflow-x-auto no-scrollbar">
+        {tabButtons.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setValue("activeTab", tab.id)}
+            className={`px-4 py-2 flex-shrink-0 text-sm font-medium border-b-2 transition ${
+              activeTab === tab.id
+                ? "border-red-600 text-red-600"
+                : "border-transparent text-gray-600"
+            }`}
+          >
+            {tab.label}
+          </button>
         ))}
-      </aside>
+      </div>
 
-      {/* Main Content */}
-      <section className="md:col-span-3 w-full bg-white rounded-md shadow p-4 sm:p-6">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
-          <div className="text-sm text-gray-500 mb-2 sm:mb-0">
-            Home / My Account
-          </div>
-          <div className="text-sm font-medium text-destructive">
-            Welcome! {user?.name || "User"}
-          </div>
-        </div>
-
-        {/* TAB CONTENT */}
-        {activeTab === "profile" && (
-          <>
-            <h2 className="text-xl font-bold mb-6">Edit Your Profile</h2>
-            <form className="space-y-4" onSubmit={handleSubmit}>
-              {user?.isGoogle ? (
-                <>
-                  <p className="text-gray-600 mb-4">
-                    You signed up using Google. You can set a password below to
-                    enable email login too.
-                  </p>
-
-                  <input
-                    name="newPassword"
-                    type="password"
-                    value={profile.newPassword}
-                    onChange={handleChange}
-                    placeholder="New Password"
-                    className="border px-4 py-2 rounded w-full"
-                  />
-                  <input
-                    name="confirmPassword"
-                    type="password"
-                    value={profile.confirmPassword}
-                    onChange={handleChange}
-                    placeholder="Confirm Password"
-                    className="border px-4 py-2 rounded w-full"
-                  />
-                  <button
-                    type="submit"
-                    className="mt-4 w-full sm:w-auto px-6 py-2 bg-red-600 text-white rounded hover:bg-red-500"
+      <div className="grid md:grid-cols-4 gap-6">
+        {/* Sidebar (hidden on mobile) */}
+        <aside className="hidden md:block md:col-span-1 border-r pr-4">
+          {sidebarGroups.map((group, i) => (
+            <div key={i} className="mb-6">
+              <h3 className="text-lg font-semibold mb-2 text-gray-800">
+                {group.title}
+              </h3>
+              <ul className="space-y-2 text-sm">
+                {group.items.map((item) => (
+                  <li
+                    key={item.id}
+                    onClick={() => setValue("activeTab", item.id)}
+                    className={`cursor-pointer rounded px-2 py-1 transition ${
+                      activeTab === item.id
+                        ? "text-red-600 font-medium bg-red-50"
+                        : "text-gray-600 hover:text-black"
+                    }`}
                   >
-                    Set Password
-                  </button>
-                </>
+                    {item.label}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </aside>
+
+        {/* Main Section */}
+        <section className="md:col-span-3 bg-white rounded-md shadow p-4 sm:p-6">
+          <div className="flex justify-between mb-6">
+            <div className="text-sm text-gray-500">Home / My Account</div>
+            <div className="text-sm font-medium text-red-600">
+              Welcome! {user?.name || "User"}
+            </div>
+          </div>
+
+          {/* Profile Tab */}
+          {activeTab === "profile" && (
+            <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
+              <h2 className="text-xl font-bold mb-4">Edit Your Profile</h2>
+              <input
+                {...register("name")}
+                placeholder="Full Name"
+                className="border px-4 py-2 rounded w-full"
+              />
+              <input
+                {...register("emailOrPhone")}
+                disabled
+                className="border px-4 py-2 rounded w-full bg-gray-100"
+              />
+              <input
+                {...register("newPassword")}
+                type="password"
+                placeholder="New Password"
+                className="border px-4 py-2 rounded w-full"
+              />
+              <input
+                {...register("confirmPassword")}
+                type="password"
+                placeholder="Confirm Password"
+                className="border px-4 py-2 rounded w-full"
+              />
+              <div className="flex gap-3 justify-end">
+                <button
+                  type="button"
+                  onClick={() => reset()}
+                  className="px-6 py-2 border rounded"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-6 py-2 bg-red-600 text-white rounded hover:bg-red-500"
+                >
+                  Save
+                </button>
+              </div>
+            </form>
+          )}
+
+          {/* Address Book */}
+          {activeTab === "address" && (
+            <div>
+              <h2 className="text-xl font-bold mb-4">My Address Book</h2>
+              {addressLoading ? (
+                <p>...</p>
               ) : (
-                <>
-                  <div className="grid sm:grid-cols-2 gap-4">
-                    <input
-                      name="name"
-                      value={profile.name}
-                      onChange={handleChange}
-                      placeholder="Full Name"
-                      className="border px-4 py-2 rounded w-full"
-                    />
-                    <input
-                      name="emailOrPhone"
-                      value={profile.emailOrPhone}
-                      onChange={handleChange}
-                      placeholder="Email or Phone"
-                      className="border px-4 py-2 rounded w-full"
-                      disabled
-                    />
-                  </div>
+                <div className="space-y-4">
+                  {addressData?.addresses
+                    ?.sort(
+                      (a, b) => (b.isDefault ? 1 : 0) - (a.isDefault ? 1 : 0)
+                    )
+                    .map((addr) => (
+                      <div
+                        key={addr._id}
+                        className={`border p-3 rounded ${
+                          addr.isDefault ? "border-green-500" : ""
+                        }`}
+                      >
+                        <div className="flex justify-between items-center">
+                          <p className="font-medium">{addr.name}</p>
+                          <span className="text-xs bg-gray-100 px-2 py-1 rounded">
+                            {addr.label || "Home"}
+                          </span>
+                        </div>
+                        <p className="text-gray-400 text-sm">{addr.deliveryAddress}</p>
+                        <p className="text-gray-400 text-sm">{addr.phone}</p>
+                        <div className="flex items-center gap-2 mt-2">
+                          {addr.isDefault && (
+                            <span className="text-sm text-green-600 font-semibold">
+                              Default
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex gap-3 mt-3">
+                          <button
+                            onClick={() => {
+                              setEditingAddress(addr);
+                              resetAddress({
+                                name: addr.name,
+                                deliveryAddress: addr.deliveryAddress,
+                                phone: addr.phone,
+                                label: addr.label || "Home",
+                              });
+                            }}
+                            className="px-3 py-1 border rounded text-sm hover:bg-gray-100"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() =>
+                              deleteAddressMutation.mutate(addr._id)
+                            }
+                            className="px-3 py-1 border rounded text-sm hover:bg-gray-100"
+                          >
+                            Delete
+                          </button>
+                          {!addr.isDefault && (
+                            <button
+                              onClick={() =>
+                                setDefaultMutation.mutate(addr._id)
+                              }
+                              className="px-3 py-1 border rounded text-sm text-green-600 hover:bg-green-50"
+                            >
+                              Set Default
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              )}
 
-                  <input
-                    name="address"
-                    value={profile.address}
-                    onChange={handleChange}
-                    placeholder="Address"
-                    className="border px-4 py-2 rounded w-full"
-                  />
+              {/* Add / Edit Form */}
+              <form
+                onSubmit={handleAddressSubmit(onAddressSubmit)}
+                className="mt-6 border-t pt-4 space-y-3"
+              >
+                <h3 className="font-semibold">
+                  {editingAddress ? "Edit Address" : "Add New Address"}
+                </h3>
+                <input
+                  {...addressRegister("name", { required: "Name required" })}
+                  placeholder="Full Name"
+                  className="border px-3 py-2 rounded w-full"
+                />
+                {errors.name && (
+                  <p className="text-sm text-red-500">{errors.name.message}</p>
+                )}
+                <input
+                  {...addressRegister("phone", {
+                    required: "Phone number required",
+                  })}
+                  placeholder="Phone"
+                  className="border px-3 py-2 rounded w-full"
+                />
+                {errors.phone && (
+                  <p className="text-sm text-red-500">{errors.phone.message}</p>
+                )}
+                <textarea
+                  {...addressRegister("deliveryAddress", {
+                    required: "Address required",
+                  })}
+                  placeholder="Delivery Address"
+                  className="border px-3 py-2 rounded w-full"
+                />
+                {errors.deliveryAddress && (
+                  <p className="text-sm text-red-500">
+                    {errors.deliveryAddress.message}
+                  </p>
+                )}
 
-                  <h3 className="text-lg font-semibold mt-6">
-                    Change Password
-                  </h3>
-                  <input
-                    name="currentPassword"
-                    type="password"
-                    value={profile.currentPassword}
-                    onChange={handleChange}
-                    placeholder="Current Password"
-                    className="border px-4 py-2 rounded w-full"
-                  />
-                  <input
-                    name="newPassword"
-                    type="password"
-                    value={profile.newPassword}
-                    onChange={handleChange}
-                    placeholder="New Password"
-                    className="border px-4 py-2 rounded w-full"
-                  />
-                  <input
-                    name="confirmPassword"
-                    type="password"
-                    value={profile.confirmPassword}
-                    onChange={handleChange}
-                    placeholder="Confirm New Password"
-                    className="border px-4 py-2 rounded w-full"
-                  />
+                <select
+                  {...addressRegister("label")}
+                  className="border px-3 py-2 rounded w-full"
+                >
+                  <option value="Home">🏠 Home</option>
+                  <option value="Office">🏢 Office</option>
+                  <option value="Other">📦 Other</option>
+                </select>
 
-                  <div className="flex flex-col sm:flex-row gap-3 mt-6 justify-end" >
+                <div className="flex justify-end gap-3 mt-3">
+                  {editingAddress && (
                     <button
                       type="button"
-                      className="px-6 py-2 border rounded hover:bg-gray-100 w-full sm:w-auto"
+                      onClick={() => {
+                        setEditingAddress(null);
+                        resetAddress({
+                          name: "",
+                          deliveryAddress: "",
+                          phone: "",
+                          label: "Home",
+                        });
+                      }}
+                      className="px-4 py-2 border rounded"
                     >
                       Cancel
                     </button>
-                    <button
-                      type="submit"
-                      className="px-6 py-2 bg-red-600 text-white rounded hover:bg-red-500 w-full sm:w-auto"
-                    >
-                      Save Changes
-                    </button>
-                  </div>
-                </>
-              )}
-            </form>
-          </>
-        )}
-
-        {activeTab === "address" && (
-          <div>
-            <h2 className="text-2xl font-bold mb-4">My Address Book</h2>
-            <div className="space-y-4">
-              {userAddresses.map((addr) => (
-                <div
-                  key={addr.id}
-                  className="border rounded p-4 hover:shadow transition"
-                >
-                  <h3 className="font-semibold text-gray-800 flex justify-between">
-                    {addr.type}
-                    {addr.isDefault && (
-                      <span className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded">
-                        Default
-                      </span>
-                    )}
-                  </h3>
-                  <p className="text-sm text-gray-600 mt-1">
-                    {addr.addressLine}
-                  </p>
-                  <p className="text-sm text-gray-600">📞 {addr.phone}</p>
-                  <div className="flex gap-3 mt-2">
-                    <button className="text-sm text-red-500 hover:underline">
-                      Edit
-                    </button>
-                    <button className="text-sm text-gray-600 hover:underline">
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {activeTab === "returns" && (
-          <div>
-            <h2 className="text-2xl font-bold mb-4">My Returns</h2>
-            <div className="space-y-4">
-              {orders.map((order) => (
-                <div
-                  key={order.id}
-                  className="border rounded p-4 flex justify-between items-center"
-                >
-                  <div>
-                    <p className="font-semibold">{order.id}</p>
-                    <p className="text-sm text-gray-500">Date: {order.date}</p>
-                  </div>
-                  <p
-                    className={`text-sm font-medium ${
-                      order.status === "Delivered"
-                        ? "text-green-600"
-                        : "text-red-500"
-                    }`}
+                  )}
+                  <button
+                    type="submit"
+                    className="px-6 py-2 bg-red-600 text-white rounded hover:bg-red-500"
                   >
-                    {order.status}
-                  </p>
+                    {editingAddress ? "Update" : "Add"}
+                  </button>
                 </div>
-              ))}
+              </form>
             </div>
-          </div>
-        )}
-
-        {activeTab === "wishlist" && (
-          <div>
-            <h2 className="text-2xl font-bold mb-4">My Wishlist</h2>
-            <div className="grid sm:grid-cols-2 gap-4">
-              {wishlist.map((item) => (
-                <div
-                  key={item.id}
-                  className="border rounded p-3 flex gap-4 hover:shadow transition"
-                >
-                  <img
-                    src={item.image}
-                    alt={item.name}
-                    className="w-16 h-16 object-cover rounded"
-                  />
-                  <div>
-                    <h4 className="font-medium text-gray-800">{item.name}</h4>
-                    <p className="text-sm text-gray-500">৳{item.price}</p>
-                    <button className="text-sm text-red-600 hover:underline mt-1">
-                      Remove
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </section>
+          )}
+        </section>
+      </div>
     </div>
   );
 };

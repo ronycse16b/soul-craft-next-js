@@ -1,19 +1,21 @@
 import { adminOnlyMiddleware } from "@/lib/authMiddleware";
 import { connectDB } from "@/lib/db.config";
-
+import { verifyAccess } from "@/lib/roleMiddleware";
 import orderModel from "@/models/order.model";
 import productModel from "@/models/product.model";
 import { NextResponse } from "next/server";
 
 // PUT /api/orders/[id]
 export async function PUT(req, { params }) {
-    const auth = await adminOnlyMiddleware(req);
-    if (auth) return auth; // unauthorized
+   const auth = await verifyAccess(req, {
+     roles: ["admin", "moderator"],
+     permission: "update",
+   });
+   if (auth instanceof Response) return auth;
   await connectDB();
 
   const { id } = params;
-  const body = await req.json();
-  const { status } = body;
+  const { status } = await req.json();
 
   const order = await orderModel.findById(id);
   if (!order)
@@ -21,7 +23,7 @@ export async function PUT(req, { params }) {
 
   const prevStatus = order.status;
 
-  // Update order
+  // Update order status
   const updatedOrder = await orderModel.findByIdAndUpdate(
     id,
     {
@@ -36,12 +38,13 @@ export async function PUT(req, { params }) {
   const isFailed = ["Return", "Failed"].includes(status);
 
   if (statusChanged && (isSuccess || isFailed)) {
-    const qty = order.qty;
+    const qty = order.qty || 0;
     const stockChange = isSuccess ? -qty : qty;
     const soldChange = isSuccess ? qty : -qty;
 
+    // Find product (simple or variant)
     const product = await productModel.findOne({
-      $or: [{ sku: order.sku }, { "variant.sku": order.sku }],
+      $or: [{ sku: order.sku }, { "variants.sku": order.sku }],
     });
 
     if (!product) {
@@ -51,22 +54,17 @@ export async function PUT(req, { params }) {
       );
     }
 
-    // SIMPLE PRODUCT UPDATE
+    // SIMPLE PRODUCT
     if (product.type === "simple" && product.sku === order.sku) {
       await productModel.updateOne(
         { sku: order.sku },
-        {
-          $inc: {
-            quantity: stockChange,
-            totalSold: soldChange,
-          },
-        }
+        { $inc: { quantity: stockChange, totalSold: soldChange } }
       );
     }
 
-    // VARIANT PRODUCT UPDATE
+    // VARIANT PRODUCT
     else if (product.type === "variant") {
-      const variantIndex = product.variant.findIndex(
+      const variantIndex = product.variants.findIndex(
         (v) => v.sku === order.sku
       );
 
@@ -77,7 +75,7 @@ export async function PUT(req, { params }) {
         );
       }
 
-      product.variant[variantIndex].quantity += stockChange;
+      product.variants[variantIndex].quantity += stockChange;
       product.totalSold = (product.totalSold || 0) + soldChange;
 
       await product.save();

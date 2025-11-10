@@ -1,5 +1,6 @@
 import { adminOnlyMiddleware } from "@/lib/authMiddleware";
 import { connectDB } from "@/lib/db.config";
+import { verifyAccess } from "@/lib/roleMiddleware";
 import productModel from "@/models/product.model";
 import fs from 'fs';
 import { NextResponse } from "next/server";
@@ -7,8 +8,11 @@ import path from 'path';
 
 
 export async function PUT(req, { params }) {
-    const auth = await adminOnlyMiddleware(req);
-    if (auth) return auth; // unauthorized
+  const auth = await verifyAccess(req, {
+    roles: ["admin", "moderator"],
+    permission: "update",
+  });
+  if (auth instanceof Response) return auth;
   await connectDB();
   const { id } = await params;
   const { searchParams } = new URL(req.url);
@@ -45,72 +49,12 @@ export async function PUT(req, { params }) {
 }
 
 
-// export async function DELETE(req, { params }) {
-//     const auth = await adminOnlyMiddleware(req);
-//     if (auth) return auth; // unauthorized
-//   await connectDB();
-//   const { id } = await params;
-
-//   try {
-//     const product = await productModel.findById(id);
-//     if (!product) {
-//       return NextResponse.json({ success: false, message: "Product not found" }, { status: 404 });
-//     }
-
-//     // Prepare all image paths (thumbnail + images array)
-//     const imagePaths = [
-//       ...(product.images || []), // array of image paths
-//       product.thumbnail,         // single thumbnail
-//     ];
-
-//     const extractImagePaths = (html) => {
-//       const matches = [...html.matchAll(/<img[^>]+src="([^">]+)"/g)];
-//       return matches.map((m) => m[1]); // returns array like ['/desc-images/xyz.jpg']
-//     };
-    
-//     const deleteImagesFromDescription = (descriptionHtml) => {
-//       const imagePaths = extractImagePaths(descriptionHtml);
-
-//       for (const imgPath of imagePaths) {
-//         const fullPath = path.join(process.cwd(), "uploads", imgPath);
-//         if (fs.existsSync(fullPath)) {
-//           fs.unlinkSync(fullPath);
-//         }
-//       }
-//     };
-
-//     // Remove each file from /public/uploads
-//     imagePaths.forEach((imgPath) => {
-//       if (imgPath) {
-//         const filePath = path.join(
-//           process.cwd(),
-//           "uploads",
-//           path.basename(imgPath)
-//         );
-//         if (fs.existsSync(filePath)) {
-//           try {
-//             fs.unlinkSync(filePath);
-//             console.log(`Deleted file: ${filePath}`);
-//           } catch (err) {
-//             console.error(`Failed to delete ${filePath}: ${err.message}`);
-//           }
-//         }
-//       }
-//     });
-
-//     // Delete the product document
-//     await productModel.findByIdAndDelete(id);
-//     deleteImagesFromDescription(product.description);
-
-//     return NextResponse.json({ success: true, message: "Product and images deleted" });
-//   } catch (error) {
-//     return NextResponse.json({ success: false, message: error.message }, { status: 500 });
-//   }
-// }
-
 export async function DELETE(req, { params }) {
-  const auth = await adminOnlyMiddleware(req);
-  if (auth) return auth; // unauthorized
+  const auth = await verifyAccess(req, {
+    roles: ["admin", "moderator"],
+    permission: "delete",
+  });
+  if (auth instanceof Response) return auth;
 
   await connectDB();
   const { id } = await params; // params is an object, no await needed here

@@ -5,6 +5,11 @@ import StatCard from "./StatCard";
 import OrdersTable from "./OrdersTable";
 import ActivityList from "./ActivityList";
 import ChartCard from "./ChartCard";
+import SummaryCards from "./SummaryCards";
+import SalesOverTimeChart from "./SalesOverTimeChart";
+import TopProductsCard from "./TopProductsCard";
+import TodayOrders from "./TodayOrders";
+import SalesChart from "./SalesChart";
 
 export default function DashboardPage() {
   // demo data (replace with real fetches)
@@ -55,61 +60,19 @@ export default function DashboardPage() {
   ];
 
   return (
-    <div className=" bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100  sm:p-5">
-      <main className="flex-1">
-        <div className="p-2 sm:p-2 lg:p-3 space-y-6">
-          {/* ===== Top Stats ===== */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {stats.map((s) => (
-              <StatCard key={s.title} {...s} />
-            ))}
-          </div>
+    <section className="p-4 space-y-6">
+      {/* <h1 className="text-2xl font-bold">Dashboard</h1> */}
+      <SummaryCards />
 
-          {/* ===== Charts + Recent Orders & Activity ===== */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            {/* Chart */}
-            <div className="lg:col-span-2 rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 sm:px-5 px-1 py-2 sm:py-5 ">
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <h3 className="text-sm font-semibold">Sales Overview</h3>
-                <div className="text-xs text-slate-500">Last 30 days</div>
-              </div>
+      <div className="grid lg:grid-cols-2 gap-4">
+        <SalesOverTimeChart />
+        <TopProductsCard />
+      </div>
 
-              {/* Chart Card (Recharts) */}
-                <ChartCard />
-              {/* <div className="mt-4 h-[260px] sm:h-[320px] border rounded-md border-dashed border-slate-100 dark:border-slate-800 flex items-center justify-center">
-              </div> */}
-            </div>
-
-            {/* Orders + Activity */}
-            <div className="space-y-4">
-              <OrdersTable orders={orders} />
-              <ActivityList items={activities} />
-            </div>
-          </div>
-
-          {/* ===== Bottom Area: Top Products ===== */}
-          <div className="rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4">
-            <h3 className="text-sm font-semibold mb-3">Top Products</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-              {[
-                { name: "Running Shoes", sold: 520 },
-                { name: "Wireless Headset", sold: 340 },
-                { name: "Office Chair", sold: 210 },
-              ].map((p) => (
-                <div
-                  key={p.name}
-                  className="p-3 rounded-md border border-slate-100 dark:border-slate-800 hover:shadow-sm transition-shadow"
-                >
-                  <div className="text-sm font-semibold">{p.name}</div>
-                  <div className="text-xs text-slate-500 mt-1">
-                    Sold: {p.sold}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </main>
-    </div>
+      <div className="grid lg:grid-cols-2 gap-4">
+        <TodayOrders />
+        <SalesChart />
+      </div>
+    </section>
   );
 }

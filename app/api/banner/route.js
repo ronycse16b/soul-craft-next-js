@@ -1,6 +1,7 @@
 
 import { adminOnlyMiddleware } from "@/lib/authMiddleware";
 import { connectDB } from "@/lib/db.config";
+import { verifyAccess } from "@/lib/roleMiddleware";
 import bannerModel from "@/models/banner.model";
 import fs from "fs/promises";
 import { NextResponse } from "next/server";
@@ -30,8 +31,11 @@ export async function GET() {
 // POST: Add new image(s) to DB
 // ============================
 export async function POST(req) {
-    const auth = await adminOnlyMiddleware(req);
-    if (auth) return auth; // unauthorized
+     const auth = await verifyAccess(req, {
+       roles: ["admin", "moderator"],
+       permission: "create",
+     });
+     if (auth instanceof Response) return auth;
   try {
     await connectDB();
     const body = await req.json();

@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import bcrypt from "bcrypt";
 
+
 const userSchema = new mongoose.Schema(
   {
     name: { type: String, required: true },
@@ -14,27 +15,38 @@ const userSchema = new mongoose.Schema(
 
     password: {
       type: String,
-      // only required if user is NOT using Google login
       required: function () {
         return !this.isGoogle;
       },
     },
 
-    role: { type: String, enum: ["user", "admin"], default: "user" },
+    // role: { type: String, enum: ["user", "admin"], default: "user" },
 
     isGoogle: {
       type: Boolean, // true if logged in via Google
       default: false,
     },
 
-    image: {
-      type: String,
-      default: () => "https://cdn-icons-png.flaticon.com/512/149/149071.png",
+    hasPassword: {
+      type: Boolean,
+      default: false, // track if Google user has set a password
     },
 
-    address:{
+    image: {
       type: String,
-      default: "N/A",
+      default: "https://cdn-icons-png.flaticon.com/512/149/149071.png",
+    },
+
+    role: {
+      type: String,
+      enum: ["admin", "moderator", "user"],
+      default: "user",
+    },
+    permissions: {
+      create: { type: Boolean, default: false },
+      read: { type: Boolean, default: true },
+      update: { type: Boolean, default: false },
+      delete: { type: Boolean, default: false },
     },
 
     googleId: {
@@ -46,10 +58,11 @@ const userSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Hash password before saving (only for credentials login)
-userSchema.pre("save", async function () {
-  if (!this.isModified("password") || !this.password) return;
+// Hash password before saving (only for credentials login or new password)
+userSchema.pre("save", async function (next) {
+  if (!this.isModified("password") || !this.password) return next();
   this.password = await bcrypt.hash(this.password, 10);
+  next();
 });
 
 // Compare password method

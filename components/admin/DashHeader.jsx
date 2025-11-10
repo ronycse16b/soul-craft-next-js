@@ -21,14 +21,11 @@ import {
   ChevronDown,
   SettingsIcon,
 } from "lucide-react";
+import Link from "next/link";
 
 export default function DashHeader() {
   const { data: session } = useSession();
-  const user = session?.user || {
-    name: "abdus salam fotik",
-    email: "info.fotik@gmail.com",
-    image: "https://www.gravatar.com/avatar?d=mp",
-  };
+  const user = session?.user || {};
 
   return (
     <header className="h-16 border-b flex items-center justify-between px-4 md:px-6 bg-background shadow-sm z-40">
@@ -47,7 +44,9 @@ export default function DashHeader() {
               <span className="text-sm font-medium leading-tight capitalize">
                 {user?.name}
               </span>
-              <span className="text-xs text-gray-500">{user?.email}</span>
+              <span className="text-xs text-gray-500">
+                {user?.emailOrPhone}
+              </span>
             </div>
 
             {/* Dropdown Arrow with Red Marker */}
@@ -76,16 +75,18 @@ export default function DashHeader() {
 
           {/* Menu Items */}
           <div className="py-1 text-sm">
-            <DropdownMenuItem className="flex items-center gap-2">
-              <User className="w-4 h-4 text-gray-500" /> My Details
-            </DropdownMenuItem>
+            <Link href="/dashboard/profile">
+              <DropdownMenuItem className="flex items-center gap-2">
+                <User className="w-4 h-4 text-gray-500" /> My Details
+              </DropdownMenuItem>
+            </Link>
 
-            <DropdownMenuItem className="flex items-center gap-2">
-              <KeyRound className="w-4 h-4 text-gray-500" /> Change Password
-            </DropdownMenuItem>
-            <DropdownMenuItem className="flex items-center gap-2">
-              <SettingsIcon className="w-4 h-4 text-gray-500" /> Settings
-            </DropdownMenuItem>
+            <Link href="/dashboard/users">
+              <DropdownMenuItem className="flex items-center gap-2">
+                <Users2 className="w-4 h-4 text-gray-500" /> Role & Permissions
+              </DropdownMenuItem>
+            </Link>
+           
 
             <DropdownMenuSeparator />
 
@@ -93,11 +94,7 @@ export default function DashHeader() {
               onClick={() => signOut({ callbackUrl: "/" })}
               className="flex items-center gap-2 text-red-600 font-medium cursor-pointer"
             >
-              <LogOut
-                
-                className="w-4 h-4"
-              />{" "}
-              Logout
+              <LogOut className="w-4 h-4" /> Logout
             </DropdownMenuItem>
           </div>
         </DropdownMenuContent>

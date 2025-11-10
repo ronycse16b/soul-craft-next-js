@@ -1,103 +1,115 @@
 "use client";
 
 import Image from "next/image";
-import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogTrigger, DialogContent } from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
-import { Heart, Eye, ShoppingBasketIcon } from "lucide-react";
 import { useState } from "react";
 
-export default function ProductCard() {
-  const product = {
-    name: "Gucci Duffle Bag",
-    image: "/p1.png", // Replace with actual path
-    price: 960,
-    originalPrice: 1160,
-    rating: 4.5,
-    reviews: 65,
-  };
+export default function ProductCard({ product }) {
+  const [hovered, setHovered] = useState(false);
 
-  const discount = product.originalPrice - product.price;
-  const discountPercent = Math.round((discount / product.originalPrice) * 100);
+  // Images
+  const mainImage =
+    product?.thumbnail || product?.images?.[0] ;
 
-  const [open, setOpen] = useState(false);
+  // Variants & stock
+  const availableVariants =
+    product.type === "variant"
+      ? product.variants?.filter((v) => v.quantity > 0) || []
+      : product.quantity > 0
+      ? [
+          {
+            price: product.price,
+            discount: product.discount || 0,
+            quantity: product.quantity,
+          },
+        ]
+      : [];
+
+  const inStock = availableVariants.length > 0;
+
+  // Price calculations
+  const minPrice = availableVariants.length
+    ? Math.min(...availableVariants.map((v) => v.price))
+    : product.price || 0;
+
+  const discountPrice = availableVariants.length
+    ? Math.max(...availableVariants.map((v) => v.discount || 0))
+    : product.discount || 0;
+
+  const discountPercent = discountPrice
+    ? Math.round(((minPrice - discountPrice) / minPrice) * 100)
+    : 0;
+
+  // Variant summary
 
   return (
-    <Card className="w-full max-w-[220px] rounded-none border-0  hover:shadow-lg transition-all duration-200">
-      {/* Product Image */}
-      <div className="relative w-full aspect-[1] bg-gray-100 flex items-center justify-center overflow-hidden ">
-        {/* Discount Badge */}
-        <Badge
-          variant="destructive"
-          className="absolute top-2 left-2 text-[10px] px-2 py-1 rounded-none"
-        >
-          -{discountPercent}%
-        </Badge>
+    <Link href={`/products/${product.slug}`}>
+      <div
+        className="w-full max-w-[300px] sm:max-w-[260px] md:max-w-[220px] lg:max-w-[240px] mx-auto rounded overflow-hidden shadow-md hover:shadow-xl transition-shadow duration-500 cursor-pointer"
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+      >
+        {/* Product Image */}
+        <div className="relative overflow-hidden">
+          <Image
+            src={mainImage}
+            alt={product.productName}
+            width={404}
+            height={500}
+            className={`w-full h-40 sm:h-48 md:h-44 lg:h-48 object-contain bg-gray-100 transition-transform duration-500 ${
+              hovered ? "scale-105" : "scale-100"
+            }`}
+          />
 
-        <img
-          src={product.image}
-          alt={product.name}
-          className="max-w-[70%] max-h-[70%] object-contain transition-transform duration-300 hover:scale-105"
-        />
+          {/* Discount badge */}
+          {discountPercent > 0 && (
+            <div className="absolute top-2 left-2 bg-red-500 text-white px-2 py-1 rounded-md text-xs font-medium">
+              -{discountPercent}%
+            </div>
+          )}
 
-        {/* Icons */}
-        <div className="absolute top-2 right-2 flex flex-col gap-1">
-          <Button
-            size="icon"
-            variant="ghost"
-            className="rounded-full bg-white hover:bg-[#f69224]/10 shadow-sm p-1"
-          >
-            <Heart className="w-4 h-4 text-[#f69224]" />
-          </Button>
+          {/* New Arrival badge */}
+          {product.newArrival && (
+            <div className="absolute top-2 right-2 bg-green-500 text-white px-2 py-1 rounded-md text-xs font-medium">
+              New
+            </div>
+          )}
+        </div>
 
-          <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="rounded-full bg-white hover:bg-[#6fd300]/10 shadow-sm p-1"
-              >
-                <Eye className="w-4 h-4 text-[#6fd300]" />
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="p-0 max-w-sm border-none shadow-xl overflow-hidden">
-              <Image
-                src="/p1.png"
-                alt="Quick View"
-                width={500}
-                height={400}
-                className="w-full h-auto object-contain bg-white"
-                priority
-              />
-            </DialogContent>
-          </Dialog>
+        {/* Product Info */}
+        <div className="">
+          <div className="p-3">
+            <h3 className="text-sm sm:text-xs font-semibold line-clamp-2 truncate">
+              {product.productName}
+            </h3>
+
+            {/* Price */}
+            <div className="mt-2 flex items-center gap-1">
+              <span className="font-bold text-green-600 text-sm">
+                {discountPrice || minPrice} BDT
+              </span>
+              {discountPercent > 0 && (
+                <span className="line-through text-red-400 text-sm">
+                  {minPrice} BDT
+                </span>
+              )}
+            </div>
+          </div>
+          {/* Buy Now button */}
+          <Link href={`/products/${product.slug}`}>
+            <Button
+              className={`mt-3 w-full text-white  font-semibold py-2 rounded-none ${
+                !inStock ? "opacity-50 cursor-not-allowed" : ""
+              }`}
+              disabled={!inStock}
+              type="button"
+            >
+              {inStock ? "Buy Now" : "Out of Stock"}
+            </Button>
+          </Link>
         </div>
       </div>
-
-      {/* Product Info */}
-      <CardContent className="px-2 py-1 space-y-1">
-        <h3 className="text-xs font-semibold line-clamp-2">{product.name}</h3>
-        <div className="flex items-center gap-1 text-xs">
-          <span className="font-bold text-green-600">${product.price}</span>
-          <span className="line-through text-gray-500">
-            ${product.originalPrice}
-          </span>
-        </div>
-        <div className="text-xs text-gray-600">
-          ⭐ {product.rating} ({product.reviews} reviews)
-        </div>
-      </CardContent>
-
-      {/* Add to Cart */}
-      <CardFooter className="px-2 py-1">
-        <Button
-          className="w-full h-7 text-xs flex items-center justify-center gap-1"
-          onClick={() => console.log("Added to cart!")}
-        >
-          <ShoppingBasketIcon className="w-3 h-3" /> Add to Cart
-        </Button>
-      </CardFooter>
-    </Card>
+    </Link>
   );
 }

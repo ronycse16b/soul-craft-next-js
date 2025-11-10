@@ -1,6 +1,7 @@
 
 import { adminOnlyMiddleware } from "@/lib/authMiddleware";
 import { connectDB } from "@/lib/db.config";
+import { verifyAccess } from "@/lib/roleMiddleware";
 import SubCategory from "@/models/SubCategory";
 import { NextResponse } from "next/server";
 
@@ -8,8 +9,11 @@ import { NextResponse } from "next/server";
 
 
 export async function PUT(req) {
-    const auth = await adminOnlyMiddleware(req);
-    if (auth) return auth; // unauthorized
+    const auth = await verifyAccess(req, {
+      roles: ["admin", "moderator"],
+      permission: "update",
+    });
+    if (auth instanceof Response) return auth;
   try {
     const { name, selectedCategoryId } = await req.json();
     const id = req.url.split("/").pop();

@@ -1,9 +1,17 @@
 import { connectDB } from "@/lib/db.config";
+import { verifyAccess } from "@/lib/roleMiddleware";
 import Message from "@/models/message.model";
 import { NextResponse } from "next/server";
 import nodemailer from "nodemailer";
 
 export async function POST(req) {
+
+    const auth = await verifyAccess(req, {
+      roles: ["admin", "moderator"],
+      permission: "create",
+    });
+    if (auth instanceof Response) return auth;
+
   try {
     await connectDB();
     const { messageId, reply } = await req.json();
@@ -82,7 +90,12 @@ export async function POST(req) {
   }
 }
 
-export async function GET() {
+export async function GET(req) {
+    const auth = await verifyAccess(req, {
+      roles: ["admin", "moderator"],
+      permission: "read",
+    });
+    if (auth instanceof Response) return auth;
   try {
     await connectDB();
     const messages = await Message.find().sort({ createdAt: 1 });

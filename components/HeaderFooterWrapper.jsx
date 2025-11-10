@@ -7,28 +7,38 @@ import MobileBottomBar from "@/components/MobileBottomBar";
 import AuthProviders from "@/app/AuthProviders";
 import { Toaster } from "react-hot-toast";
 
+// 🧩 Redux + Persist imports
+import { Provider } from "react-redux";
+import { PersistGate } from "redux-persist/integration/react";
+import { persistor, store } from "@/redux/store/store";
+
+
 export default function HeaderFooterWrapper({ children }) {
   const pathname = usePathname();
 
-  // Paths where we don’t want Header/Footer
-  const hiddenPaths = ['/not-found', "/admin", "/dashboard","/landing-page"];
+  // Paths where Header/Footer should be hidden
+  const hiddenPaths = ["/not-found", "/admin", "/dashboard", "/landing-page"];
   const hideLayout = hiddenPaths.some((p) => pathname.startsWith(p));
 
   return (
-    <>
-      <AuthProviders>
-        {!hideLayout && <Header />}
-        <main className="min-h-screen">
-          {children}
-          <Toaster />
+    <Provider store={store}>
+      <PersistGate loading={null} persistor={persistor}>
+        <AuthProviders>
+          {!hideLayout && <Header />}
+
+          <main className="min-h-screen">
+            {children}
+            <Toaster position="top-right" reverseOrder={false} />
           </main>
-        {!hideLayout && (
-          <>
-            <MobileBottomBar />
-            <Footer />
-          </>
-        )}
-      </AuthProviders>
-    </>
+
+          {!hideLayout && (
+            <>
+              <MobileBottomBar />
+              <Footer />
+            </>
+          )}
+        </AuthProviders>
+      </PersistGate>
+    </Provider>
   );
 }

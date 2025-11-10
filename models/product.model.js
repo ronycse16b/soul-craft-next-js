@@ -1,15 +1,27 @@
 import mongoose from "mongoose";
 import slugify from "slugify";
-import Counter from "./Counter.js"; // adjust path based on your project structure
+import Counter from "./Counter.js";
 
-const variantSchema = new mongoose.Schema(
+// Each variant combination (like S + Red)
+const variantItemSchema = new mongoose.Schema(
   {
-    variant: String,
-    price: Number,
-    quantity: Number,
-    sku: String,
+    attributes: {
+      type: Map, 
+      of: String,
+    },
+    price: { type: Number, },
     discount: { type: Number, default: 0 },
-    discountedPrice: { type: Number, default: 0 },
+    quantity: { type: Number, default: 0 },
+    sku: { type: String },
+  },
+  { _id: false }
+);
+
+// Attribute setup for variant generation
+const attributeSchema = new mongoose.Schema(
+  {
+    name: { type: String },
+    values: [{ type: String }],
   },
   { _id: false }
 );
@@ -18,28 +30,58 @@ const productSchema = new mongoose.Schema({
   productName: { type: String, required: true },
   slug: { type: String, unique: true },
   productIndex: { type: Number, unique: true },
+
   description: String,
   type: { type: String, enum: ["simple", "variant"], required: true },
-  price: { type: Number, default: 0 },
 
+  // for simple products
+  price: { type: Number, default: 0 },
   quantity: Number,
   sku: String,
   discount: { type: Number, default: 0 },
-  variant: [variantSchema],
+
+  // Variant-based
+  attributes: {
+    type: [attributeSchema],
+    required: function () {
+      return this.type === "variant"; // only required for variant products
+    },
+    default: [],
+  },
+  variants: {
+    type: [variantItemSchema],
+    required: function () {
+      return this.type === "variant"; // only required for variant products
+    },
+    default: [],
+  },
+
   brand: { type: String, default: "Soul Craft" },
   colors: [String],
   material: String,
   weight: String,
   ingredients: [String],
+
+  featured: {
+    type: Boolean,
+    default: false, // determines if the product is featured
+  },
+  featuredPosition: {
+    type: Number,
+    enum: [1, 2, 3, 4], // which slot (1–4) it appears in the layout
+    default: null,
+  },
+
   subCategory: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "SubCategory",
     required: true,
   },
   category: {
-    type: mongoose.Schema.Types.ObjectId, // optional but useful
+    type: mongoose.Schema.Types.ObjectId,
     ref: "Category",
   },
+
   images: [String],
   thumbnail: String,
   video: String,
@@ -48,6 +90,7 @@ const productSchema = new mongoose.Schema({
   visibility: { type: String, enum: ["public", "private"], default: "public" },
   flashSale: { type: Boolean, default: false },
   newArrival: { type: Boolean, default: false },
+
   averageRating: { type: Number, default: 0 },
   numReviews: { type: Number, default: 0 },
   totalSold: Number,
@@ -63,7 +106,7 @@ const productSchema = new mongoose.Schema({
   updatedAt: { type: Date, default: Date.now },
 });
 
-// Generate slug + auto-increment product index
+// Auto slug + index
 productSchema.pre("save", async function (next) {
   this.updatedAt = new Date();
 
@@ -73,7 +116,6 @@ productSchema.pre("save", async function (next) {
       { $inc: { value: 1 } },
       { new: true, upsert: true }
     );
-
     this.productIndex = counter.value;
 
     const baseSlug = slugify(this.productName, { lower: true, strict: true });

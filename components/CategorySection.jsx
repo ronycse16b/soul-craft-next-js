@@ -1,24 +1,16 @@
 "use client";
 
-import React, { useState, useRef } from "react";
-import Link from "next/link";
+import React, { useState } from "react";
 import useEmblaCarousel from "embla-carousel-react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import Container from "./Container";
+import { useQuery } from "@tanstack/react-query";
+import axios from "axios";
+import Image from "next/image";
 
 export default function CategorySection() {
-  const categories = [
-    { name: "Phones", icon: "📱" },
-    { name: "Computers", icon: "💻" },
-    { name: "SmartWatch", icon: "⌚" },
-    { name: "Camera", icon: "📸" },
-    { name: "HeadPhones", icon: "🎧" },
-    { name: "Gaming", icon: "🎮" },
-    { name: "Watch", icon: "⌚" },
-   
-  ];
-
-  const [selected, setSelected] = useState("Camera");
+  const [selected, setSelected] = useState(null);
+  const [hovered, setHovered] = useState(null);
 
   const [emblaRef, emblaApi] = useEmblaCarousel({
     align: "start",
@@ -29,17 +21,30 @@ export default function CategorySection() {
   const scrollPrev = () => emblaApi && emblaApi.scrollPrev();
   const scrollNext = () => emblaApi && emblaApi.scrollNext();
 
+  // Fetch categories dynamically
+  const { data: categories = [], isLoading } = useQuery({
+    queryKey: ["categories"],
+    queryFn: async () => {
+      const res = await axios.get("/api/categories/client"); // Your API
+      return res.data.result || [];
+
+    },
+    keepPreviousData: true,
+    refetchOnWindowFocus: false,
+    staleTime: 1000 * 60 * 5,
+    cacheTime: 1000 * 60 * 10,
+  });
+
+ 
+
   return (
     <section className="sm:py-10 py-4 bg-white">
       <Container>
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
-          <div>
-            {/* <p className="text-[#f69224] font-semibold">Categories</p> */}
-            <h2 className="text-md sm:text-2xl font-bold uppercase text-black">
-              Browse By Category
-            </h2>
-          </div>
+          <h2 className="text-md sm:text-2xl font-bold uppercase text-black">
+            Browse By Category
+          </h2>
           <div className="flex gap-2">
             <button
               onClick={scrollPrev}
@@ -59,29 +64,48 @@ export default function CategorySection() {
         {/* Categories Carousel */}
         <div className="overflow-hidden" ref={emblaRef}>
           <div className="flex gap-4">
-            {categories.map((cat) => (
-              <div
-                key={cat.name}
-                onClick={() => setSelected(cat.name)}
-                className={`flex flex-col items-center justify-center min-w-[120px] sm:min-w-[150px] h-[120px] rounded-md border text-center cursor-pointer transition-all duration-300 ${
-                  selected === cat.name
-                    ? "bg-destructive text-white border-destructive shadow-md"
-                    : "border-gray-200 hover:border-destructive hover:shadow-sm"
-                }`}
-              >
-                <div className="text-4xl mb-2">{cat.icon}</div>
-                <p
-                  className={`text-sm font-medium ${
-                    selected === cat.name ? "text-white" : "text-gray-800"
+            {categories?.map((cat) => {
+              const isSelected = selected === cat.name;
+              
+            
+
+              return (
+                <div
+                  key={cat._id || cat.name}
+                  onClick={() => setSelected(cat.name)}
+                  onMouseEnter={() => setHovered(cat?._id || cat?.name)}
+                  onMouseLeave={() => setHovered(null)}
+                  className={`flex flex-col items-center justify-center min-w-[120px] sm:min-w-[150px] h-[150px] rounded-md border cursor-pointer transition-all duration-300 relative bg-gray-50 ${
+                    isSelected
+                      ? "border-destructive shadow-lg"
+                      : "border-gray-200 hover:shadow-sm"
                   }`}
                 >
-                  {cat.name}
-                </p>
-              </div>
-            ))}
+                  {/* Image Container with fade */}
+                  <div className="relative w-20 h-20 mt-4 mb-2">
+                    <Image
+                      src={cat?.image}
+                      alt={cat?.name}
+                      fill
+                      className="absolute object-contain transition-opacity duration-500"
+                    />
+                  </div>
+
+                  {/* Category Name */}
+                  <p
+                    className={`text-sm font-semibold text-center mb-4 ${
+                      isSelected ? "text-destructive" : "text-gray-800"
+                    }`}
+                  >
+                    {cat.name}
+                  </p>
+                </div>
+              );
+            })}
           </div>
         </div>
-        <hr className="mt-18 border-t border-gray-200"/>
+
+        <hr className="mt-10 border-t border-gray-200" />
       </Container>
     </section>
   );

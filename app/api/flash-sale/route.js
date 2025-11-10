@@ -3,6 +3,7 @@ import { connectDB } from "@/lib/db.config";
 import FlashModel from "@/models/flash.model";
 import Product from "@/models/product.model";
 import { adminOnlyMiddleware } from "@/lib/authMiddleware";
+import { verifyAccess } from "@/lib/roleMiddleware";
 
 
 
@@ -14,7 +15,7 @@ export async function GET() {
       .populate({
         path: "products.productId",
         select:
-          "productName brand price sku images discount flashSale type variant",
+          "productName brand price sku quantity images discount flashSale type variants thumbnail",
       })
       .sort({ createdAt: -1 });
 
@@ -30,8 +31,11 @@ export async function GET() {
 
 // ================= CREATE FLASH SALE =================
 export async function POST(req) {
-  const auth = await adminOnlyMiddleware(req);
-  if (auth) return auth;
+   const auth = await verifyAccess(req, {
+     roles: ["admin", "moderator"],
+     permission: "create",
+   });
+   if (auth instanceof Response) return auth;
 
   try {
     await connectDB();
@@ -46,26 +50,30 @@ export async function POST(req) {
       const percentage = Number(item.discount || 0);
 
       if (product.type === "simple") {
-        // discount = price after percentage
+        // ✅ Simple product discount
         product.discount = Math.round(product.price - (product.price * percentage) / 100);
         product.flashSale = true;
-        await product.save();
-      } else if (product.type === "variant" && Array.isArray(product.variant)) {
+      } 
+      else if (product.type === "variant" && Array.isArray(product.variants)) {
+        // ✅ Apply discount to all variants
         product.flashSale = true;
-        product.variant = product.variant.map((v) => ({
-          ...v.toObject(),
+        product.variants = product.variants.map((v) => ({
+          ...v.toObject?.() || v,
           discount: Math.round(v.price - (v.price * percentage) / 100),
         }));
-        await product.save();
       }
+
+      await product.save();
     }
 
     return NextResponse.json({ success: true, flashSale });
   } catch (err) {
-    console.error(err);
+    console.error("POST FLASH SALE ERROR:", err);
     return NextResponse.json({ success: false, message: err.message }, { status: 500 });
   }
 }
+
+
 
 // ================= UPDATE FLASH SALE =================
 export async function PUT(req) {
@@ -76,7 +84,7 @@ export async function PUT(req) {
     await connectDB();
     const { id, title, endTime, products } = await req.json();
 
-    // Reset old flash sale products
+    // ✅ Reset old products before applying new discounts
     const oldFlash = await FlashModel.findById(id);
     if (oldFlash) {
       for (const item of oldFlash.products) {
@@ -86,22 +94,25 @@ export async function PUT(req) {
         product.flashSale = false;
         product.discount = 0;
 
-        if (product.type === "variant" && Array.isArray(product.variant)) {
-          product.variant = product.variant.map((v) => ({ ...v.toObject(), discount: 0 }));
+        if (product.type === "variant" && Array.isArray(product.variants)) {
+          product.variants = product.variants.map((v) => ({
+            ...v.toObject?.() || v,
+            discount: 0,
+          }));
         }
 
         await product.save();
       }
     }
 
-    // Update flash sale
+    // ✅ Update flash sale data
     const updated = await FlashModel.findByIdAndUpdate(
       id,
       { title, endTime, products },
       { new: true }
     );
 
-    // Apply new discount
+    // ✅ Apply discounts to new product list
     for (const item of products) {
       const product = await Product.findById(item.productId);
       if (!product) continue;
@@ -111,23 +122,26 @@ export async function PUT(req) {
       if (product.type === "simple") {
         product.discount = Math.round(product.price - (product.price * percentage) / 100);
         product.flashSale = true;
-        await product.save();
-      } else if (product.type === "variant" && Array.isArray(product.variant)) {
+      } 
+      else if (product.type === "variant" && Array.isArray(product.variants)) {
         product.flashSale = true;
-        product.variant = product.variant.map((v) => ({
-          ...v.toObject(),
+        product.variants = product.variants.map((v) => ({
+          ...v.toObject?.() || v,
           discount: Math.round(v.price - (v.price * percentage) / 100),
         }));
-        await product.save();
       }
+
+      await product.save();
     }
 
     return NextResponse.json({ success: true, updated });
   } catch (err) {
-    console.error(err);
+    console.error("PUT FLASH SALE ERROR:", err);
     return NextResponse.json({ success: false, message: err.message }, { status: 500 });
   }
 }
+
+
 
 // ================= DELETE FLASH SALE =================
 export async function DELETE(req) {
@@ -149,8 +163,11 @@ export async function DELETE(req) {
         product.discount = 0;
         product.flashSale = false;
 
-        if (product.type === "variant" && Array.isArray(product.variant)) {
-          product.variant = product.variant.map((v) => ({ ...v.toObject(), discount: 0 }));
+        if (product.type === "variant" && Array.isArray(product.variants)) {
+          product.variants = product.variants.map((v) => ({
+            ...v.toObject?.() || v,
+            discount: 0,
+          }));
         }
 
         await product.save();
@@ -161,9 +178,7 @@ export async function DELETE(req) {
 
     return NextResponse.json({ success: true });
   } catch (err) {
-    console.error(err);
+    console.error("DELETE FLASH SALE ERROR:", err);
     return NextResponse.json({ success: false, message: err.message }, { status: 500 });
   }
 }
-
-

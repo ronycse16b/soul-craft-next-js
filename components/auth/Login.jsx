@@ -48,7 +48,7 @@ export default function Login() {
         setError('Invalid credentials');
       } else {
         const session = await getSession();
-        if (session?.user?.role === "admin") {
+        if (session?.user?.role === "admin" || session?.user?.role === "moderator") {
 
           toast.success("Logged in successfully",{
             position: "top-right",

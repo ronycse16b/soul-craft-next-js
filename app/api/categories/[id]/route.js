@@ -4,13 +4,17 @@ import { NextResponse } from "next/server";
 
 import { adminOnlyMiddleware } from "@/lib/authMiddleware";
 import { connectDB } from "@/lib/db.config";
+import { verifyAccess } from "@/lib/roleMiddleware";
 
 
 
 
 export async function PUT(req) {
-    const auth = await adminOnlyMiddleware(req);
-    if (auth) return auth;
+     const auth = await verifyAccess(req, {
+       roles: ["admin", "moderator"],
+       permission: "update",
+     });
+     if (auth instanceof Response) return auth;
     
      // unauthorized
   try {
