@@ -60,7 +60,7 @@ export default function MusicExperience() {
   if (isLoading) {
     return (
       <div className="flex justify-center items-center py-16 text-gray-400">
-        Loading...
+        ...
       </div>
     );
   }
@@ -71,7 +71,7 @@ export default function MusicExperience() {
 
   // 🎨 UI
   return (
-    <Container className="px-0">
+    <Container className="px-0 mb-8">
       <section className="relative w-full py-16 bg-gradient-to-r from-black via-gray-900 to-gray-800 text-white overflow-hidden">
         <div className="container mx-auto px-8 lg:px-16 flex flex-col lg:flex-row items-center justify-between gap-10">
           {/* Left Side */}
@@ -101,7 +101,7 @@ export default function MusicExperience() {
             {/* Button */}
             <Button
               asChild
-              className="bg-rose-600 hover:bg-green-600 text-white px-8 py-4 rounded-none text-lg font-semibold transition-all duration-300"
+              className="bg-rose-600 hover:bg-green-600 text-white px-8 py-6 rounded-full text-lg font-semibold transition-all duration-300"
             >
               <a href={ad.buttonLink}>{ad.buttonText}</a>
             </Button>

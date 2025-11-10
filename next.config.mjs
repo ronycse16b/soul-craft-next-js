@@ -4,8 +4,8 @@ const nextConfig = {
     domains: [
       "images.unsplash.com",
       "localhost",
-      "nobofit.com",
-      "www.nobofit.com", // Add www domain here
+      "soulcraftbd.com",
+      "www.soulcraftbd.com", // Add www domain here
     ],
   },
   async rewrites() {

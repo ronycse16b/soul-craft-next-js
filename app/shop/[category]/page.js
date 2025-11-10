@@ -6,10 +6,13 @@ export const metadata = {
   description: "Browse products by category in our shop.",
 };
 
-export default function page() {
+export default async function page({ params }) {
+
+  const {category: slug} = await params;
+
   return (
     <Container>
-      <ProductListView />
+      <ProductListView slug={slug} />
     </Container>
   );
 }

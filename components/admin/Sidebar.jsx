@@ -14,6 +14,7 @@ import {
   FolderPlus,
   Layers,
   Flag,
+  Settings2,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -28,7 +29,7 @@ export default function Sidebar({ onNavigate }) {
       items: [
         { name: "Dashboard", href: "/dashboard", icon: Home },
         {
-          name: "Orders Manage",
+          name: "Orders",
           href: "/dashboard/orders",
           icon: ShoppingCart,
         },
@@ -63,15 +64,15 @@ export default function Sidebar({ onNavigate }) {
         { name: "Banner Mange", href: "/dashboard/banner", icon: Flag },
         { name: "Advertisement", href: "/dashboard/advertisement", icon: Layers },
         { name: "Landing Page", href: "/dashboard/landing-page-list", icon: Tags },
+        { name: "Marketing Config", href: "/dashboard/marketing", icon: Settings2 },
       ],
     },
     {
       label: "Users",
       items: [
-        { name: "User Management", href: "/dashboard/users", icon: Users },
         {
-          name: "Roles & Permissions",
-          href: "/dashboard/roles",
+          name: " User Roles & Permissions Manage",
+          href: "/dashboard/users",
           icon: UserCog,
         },
       ],
@@ -80,8 +81,8 @@ export default function Sidebar({ onNavigate }) {
       label: "Settings",
       items: [
         {
-          name: "General Settings",
-          href: "/dashboard/settings",
+          name: "My Profile Settings",
+          href: "/dashboard/profile",
           icon: Settings,
         },
       ],
@@ -127,7 +128,7 @@ export default function Sidebar({ onNavigate }) {
           overflow-y-auto scrollbar-hide
         "
       >
-        {menuGroups.map((group) => (
+        {menuGroups?.map((group) => (
           <div key={group.label}>
             <p
               className="
@@ -157,7 +158,7 @@ export default function Sidebar({ onNavigate }) {
                       hover:bg-muted hover:text-foreground
                     `,
                       active
-                        ? "bg-primary text-primary-foreground shadow-sm"
+                        ? " text-destructive bg-destructive/10 shadow-sm"
                         : "text-muted-foreground"
                     )}
                   >

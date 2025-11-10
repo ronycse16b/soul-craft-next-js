@@ -1,55 +1,35 @@
 "use client";
 
-import Image from "next/image";
-import { Heart, Eye } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import Link from "next/link";
 import Container from "./Container";
 import ProductCard from "./ProductCard";
+import { Button } from "@/components/ui/button";
+import { useQuery } from "@tanstack/react-query";
 
 export default function BestSellingProducts() {
-    const products = [
-      {
-        id: 1,
-        name: "Summer Dress",
-        price: "$49.99",
-        image:
-          "https://images.unsplash.com/photo-1512436991641-6745cdb1723f?w=400",
-      },
-      {
-        id: 2,
-        name: "Casual Shirt",
-        price: "$29.99",
-        image:
-          "https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?w=400",
-      },
-      {
-        id: 3,
-        name: "Elegant Shoes",
-        price: "$79.99",
-        image:
-          "https://images.unsplash.com/photo-1521334884684-d80222895322?w=400",
-      },
+  const { data, isLoading } = useQuery({
+    queryKey: ["bestSelling"], // query key
+    queryFn: async () => {
+      const res = await fetch("/api/best-selling-products");
+      return res.json();
+    },
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    cacheTime: 1000 * 60 * 30, // 30 minutes
+  });
 
-      {
-        id: 5,
-        name: "Leather Bag",
-        price: "$99.99",
-        image:
-          "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400",
-      },
-      {
-        id: 6,
-        name: "Leather Bag",
-        price: "$99.99",
-        image:
-          "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400",
-      },
-     
-    ];
+  if (isLoading)
+    return (
+      <Container className="py-10 text-center">
+        <p>...</p>
+      </Container>
+    );
+
+  const products = data?.bestSelling || [];
+  const limit = 5;
+
   return (
     <section className="py-14 bg-white">
       <Container>
-        {/* Header */}
         <div className="flex flex-row justify-between items-center mb-10">
           <div>
             <span className="text-[#f69224] font-semibold text-sm tracking-wide flex items-center gap-2">
@@ -61,16 +41,16 @@ export default function BestSellingProducts() {
             </h2>
           </div>
 
-          <Button className="bg-destructive hover:bg-destructive/90 text-white mt-4 sm:mt-0 rounded-none">
-            View All
-          </Button>
+          <Link href="/best-selling">
+            <Button className="bg-destructive hover:bg-destructive/90 text-white mt-4 sm:mt-0 rounded-none">
+              View All
+            </Button>
+          </Link>
         </div>
 
-        {/* Products */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-6">
-          {products?.map((product) => (
-            <ProductCard key={product.id} product={product} />
-
+          {products?.slice(0, limit)?.map((product) => (
+            <ProductCard key={product._id} product={product} />
           ))}
         </div>
       </Container>

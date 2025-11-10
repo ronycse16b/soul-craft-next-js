@@ -7,11 +7,17 @@ import productModel from "@/models/product.model";
 
 import { adminOnlyMiddleware } from "@/lib/authMiddleware";
 import { connectDB } from "@/lib/db.config";
+import { verifyAccess } from "@/lib/roleMiddleware";
 
 
 
 
 export async function POST(req) {
+      const auth = await verifyAccess(req, {
+        roles: ["admin", "moderator"],
+        permission: "create",
+      });
+      if (auth instanceof Response) return auth;
 
   try {
     await connectDB();
@@ -54,8 +60,11 @@ export async function POST(req) {
 
 // get categories with sub categories
 export async function GET(req) {
-  const auth = await adminOnlyMiddleware(req);
-  if (auth) return auth; // unauthorized
+   const auth = await verifyAccess(req, {
+     roles: ["admin", "moderator"],
+     permission: "read",
+   });
+   if (auth instanceof Response) return auth;
   try {
     await connectDB();
 

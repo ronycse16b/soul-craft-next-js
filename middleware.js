@@ -24,13 +24,14 @@ export async function middleware(req) {
   }
 
   // 🧩 Protect /dashboard → Admin only
-  if (pathname.startsWith("/dashboard")) {
-    if (!token || token.role !== "admin") {
-      const loginUrl = new URL("/auth/sign-in", req.url);
-      loginUrl.searchParams.set("reason", "not-authorize");
-      return NextResponse.redirect(loginUrl);
-    }
-  }
+ if (pathname.startsWith("/dashboard")) {
+   if (!token || (token.role !== "moderator" && token.role !== "admin")) {
+     const loginUrl = new URL("/auth/sign-in", req.url);
+     loginUrl.searchParams.set("reason", "not-authorize");
+     return NextResponse.redirect(loginUrl);
+   }
+ }
+
 
   // 🧩 Protect /account → User only
   if (pathname.startsWith("/account")) {

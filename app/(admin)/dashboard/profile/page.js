@@ -1,9 +1,8 @@
 "use client";
 
-import { useSession } from "next-auth/react";
+import { useSession, signOut } from "next-auth/react";
 import { useState } from "react";
 import { LogOut, User, Save, Edit3 } from "lucide-react";
-import { signOut } from "next-auth/react";
 import toast from "react-hot-toast";
 
 export default function ProfilePage() {
@@ -12,43 +11,40 @@ export default function ProfilePage() {
   const [name, setName] = useState(session?.user?.name || "");
   const [password, setPassword] = useState("");
 
-
-
   const handleUpdate = async () => {
-    try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/api/dashboard/profile-update`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name, password }),
-        }
-      );
+    if (!name) return toast.error("Name is required");
+    setEditing(true);
 
+    try {
+      const res = await fetch("/api/dashboard/profile-update", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, password }),
+      });
       const data = await res.json();
 
       if (data.success) {
         toast.success("Profile updated successfully");
-        await update(); // Re-fetch the session from the server
-        signOut({ callbackUrl: "/auth/login" })
+        await update(); // Refresh session
         setEditing(false);
+        setPassword("");
       } else {
         toast.error(data.message || "Failed to update profile");
       }
-    } catch (error) {
+    } catch (err) {
       toast.error("Something went wrong");
     }
   };
 
-  if (status === "loading") {
-    return <div className="p-4">Loading...</div>;
-  }
+  if (status === "loading") return <div className="p-4">Loading...</div>;
 
   return (
     <div className="max-w-xl mx-auto mt-10 bg-white shadow-md p-6 rounded-lg">
       <div className="flex items-center gap-3 mb-6">
         <User className="w-6 h-6 text-primary" />
-        <h2 className="text-xl font-semibold">My Profile</h2>
+        <h2 className="text-xl font-semibold">
+          {editing ? "Edit Profile" : "Profile"}
+        </h2>
       </div>
 
       <div className="space-y-4">
@@ -64,11 +60,11 @@ export default function ProfilePage() {
         </div>
 
         <div>
-          <label className="text-sm font-medium">Email</label>
+          <label className="text-sm font-medium">Email / Phone</label>
           <input
             type="email"
-            value={session?.user?.email || ""}
-            className="mt-1 w-full border border-gray-200 px-3 py-2 rounded-md bg-gray-100 cursor-not-allowed"
+            value={session?.user?.emailOrPhone || ""}
+            className="mt-1 w-full border border-gray-200 px-3 py-2 rounded-md bg-red-100 cursor-not-allowed"
             disabled
           />
         </div>
@@ -90,8 +86,7 @@ export default function ProfilePage() {
             onClick={() => signOut({ callbackUrl: "/" })}
             className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-md"
           >
-            <LogOut className="w-4 h-4" />
-            Logout
+            <LogOut className="w-4 h-4" /> Logout
           </button>
 
           <button

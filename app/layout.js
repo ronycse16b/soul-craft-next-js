@@ -1,6 +1,8 @@
 import HeaderFooterWrapper from "@/components/HeaderFooterWrapper";
 import "./globals.css";
 import TanstackProvider from "@/TanstackProvider";
+import MarketingManager from "@/components/marketing/MarketingManager";
+import CookieConsent from "@/components/marketing/CookieConsent";
 
 export const metadata = {
   // Page title template
@@ -61,6 +63,8 @@ export default function RootLayout({ children }) {
         <TanstackProvider>
           <HeaderFooterWrapper>{children}</HeaderFooterWrapper>
         </TanstackProvider>
+        <MarketingManager />
+        <CookieConsent />
       </body>
     </html>
   );

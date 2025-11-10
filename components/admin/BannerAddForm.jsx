@@ -216,7 +216,7 @@ export default function BannerAddForm() {
                   >
                     <PlusIcon size={24} />
                     <span className="mt-2 text-sm  text-red-600 animate-pulse font-bold">
-                      Click or Tap to Upload Images (width = 690px * height = 350px )
+                      Click or Tap to Upload Images (width = 866px * height = 350px )
                     </span>
                     <span className="text-xs text-gray-500">
                       (Only image files are allowed)
@@ -334,7 +334,7 @@ export default function BannerAddForm() {
       
         <div className=" overflow-y-auto h-[300px]">
           {bannerLoading ? (
-            "Loading..."
+            "..."
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {imageUrls.map((img, index) => (

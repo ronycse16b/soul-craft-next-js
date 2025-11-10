@@ -1,10 +1,10 @@
 "use client";
 
 import axios from "axios";
-import { Plus, PlusIcon } from "lucide-react";
+import { Plus, PlusIcon, Trash2 } from "lucide-react";
 import "quill/dist/quill.snow.css";
 import { useEffect, useRef, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useFieldArray, useForm } from "react-hook-form";
 import toast from "react-hot-toast";
 
 import { useQuill } from "react-quilljs";
@@ -16,26 +16,106 @@ import Swal from "sweetalert2";
 
 Quill.register("modules/imageResize", ImageResize);
 
-
 export default function AddProductForm() {
   const {
     register,
     setValue,
     handleSubmit,
+    control,
     reset,
     watch,
+    getValues,
     formState: { errors },
   } = useForm({
     defaultValues: {
       type: "simple", // default product type
+      attributes: [{ name: "", values: "" }],
+      variants: [],
     },
   });
 
-  const [uploadedDescriptionImages, setUploadedDescriptionImages] = useState([]);
+  const {
+    fields: attrFields,
+    append: addAttr,
+    remove: removeAttr,
+  } = useFieldArray({
+    control,
+    name: "attributes",
+  });
 
-  const [variantInput, setVariantInput] = useState([
-    { variant: "", price: "", quantity: "", sku: "", discount: "" },
-  ]);
+  const {
+    fields: variantFields,
+    append: addVariant,
+    remove: removeVariant,
+  } = useFieldArray({
+    control,
+    name: "variants",
+  });
+
+  // ✅ Generate variants with unique SKU
+  const generateVariants = () => {
+    const attrs = getValues("attributes") || [];
+    const validAttrs = attrs
+      .filter((attr) => attr.name.trim() && attr.values.trim())
+      .map((attr) => ({
+        name: attr.name.trim(),
+        values: attr.values
+          .split(",")
+          .map((v) => v.trim())
+          .filter(Boolean),
+      }));
+
+    if (!validAttrs.length) return [];
+
+    const combine = (arr1, arr2) => {
+      const result = [];
+      arr1.forEach((a) => arr2.forEach((b) => result.push({ ...a, ...b })));
+      return result;
+    };
+
+    let combinations = validAttrs[0].values.map((v) => ({
+      [validAttrs[0].name]: v,
+    }));
+    for (let i = 1; i < validAttrs.length; i++) {
+      const current = validAttrs[i];
+      const mapped = current.values.map((v) => ({ [current.name]: v }));
+      combinations = combine(combinations, mapped);
+    }
+
+    return combinations.map((c, index) => {
+      // Generate SKU based on all attribute values
+      const skuParts = Object.values(c).join("-");
+      const sku = `SKU-${skuParts}-${index + 1}`;
+      return {
+        attributes: c,
+        price: "",
+        discount: 0,
+        quantity: "",
+        sku,
+      };
+    });
+  };
+
+  const handleGenerateVariants = () => {
+    const newVariants = generateVariants();
+    const oldVariants = getValues("variants") || [];
+
+    const mergedVariants = newVariants.map((newVar) => {
+      const match = oldVariants.find(
+        (oldVar) =>
+          JSON.stringify(oldVar.attributes) ===
+          JSON.stringify(newVar.attributes)
+      );
+      return match ? { ...newVar, ...match } : newVar;
+    });
+
+    reset({ ...getValues(), variants: mergedVariants });
+  };
+
+  const [uploadedDescriptionImages, setUploadedDescriptionImages] = useState(
+    []
+  );
+
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedParentId, setSelectedParentId] = useState("");
@@ -81,7 +161,6 @@ export default function AddProductForm() {
 
   const [isDeleting, setIsDeleting] = useState(null);
 
-  const initialSizes = ["38", "39", "40", "41", "42", "43"];
   const initialColors = ["Black", "Brown", "Olive", "White", "Navy"];
 
   const [sizes, setSizes] = useState([]);
@@ -101,17 +180,15 @@ export default function AddProductForm() {
   // Update localStorage when uploadedUrls changes
 
   useEffect(() => {
-      if (uploadedUrls?.length > 0) {
-        console.log("🟨 Saving to LocalStorage:", uploadedUrls);
-        localStorage.setItem(
-          "uploadedImagesForAdd",
-          JSON.stringify(uploadedUrls)
-        );
-      }
-    }, [uploadedUrls]);
-  
+    if (uploadedUrls?.length > 0) {
+      console.log("🟨 Saving to LocalStorage:", uploadedUrls);
+      localStorage.setItem(
+        "uploadedImagesForAdd",
+        JSON.stringify(uploadedUrls)
+      );
+    }
+  }, [uploadedUrls]);
 
-  
   const modules = {
     toolbar: {
       container: [
@@ -174,11 +251,10 @@ export default function AddProductForm() {
       matchVisual: false,
     },
     imageResize: {
-      
-      modules: ["Resize", "DisplaySize", "Toolbar" ], // ✅ alignment + resize UI
+      modules: ["Resize", "DisplaySize", "Toolbar"], // ✅ alignment + resize UI
     },
   };
-  
+
   const { quill: descriptionQuill, quillRef: descriptionRef } = useQuill({
     modules,
   });
@@ -191,11 +267,7 @@ export default function AddProductForm() {
         setValue("description", html || "");
       });
     }
-
-    
   }, [descriptionQuill]);
-
-
 
   const MAX_FILE_SIZE = 1 * 1024 * 1024; // 1MB
 
@@ -208,7 +280,6 @@ export default function AddProductForm() {
 
       files.forEach((file) => {
         if (file.size > MAX_FILE_SIZE) {
-          
           Swal.fire({
             icon: "error",
             title: "File Too Large",
@@ -280,20 +351,6 @@ export default function AddProductForm() {
     }
   };
 
-  // Add color if not already selected
-  const addColor = (color) => {
-    if (color && !colors.includes(color)) {
-      setColors([...colors, color]);
-      if (color === colorInput) setColorInput("");
-    }
-  };
-
-
-
-  const removeColor = (value) => {
-    setColors(colors.filter((c) => c !== value));
-  };
-
   const onSubmit = async (data) => {
     setIsSaving(true);
 
@@ -311,7 +368,7 @@ export default function AddProductForm() {
 
     const productPayload = {
       ...data,
-      variant: variantInput,
+
       colors,
       images: uploadedUrls,
       thumbnail: thumbnailUrl,
@@ -370,7 +427,7 @@ export default function AddProductForm() {
       setSizes([]);
       setColors([]);
       setUploadedUrls([]);
-      setVariantInput([{ variant: "", price: "", quantity: "", sku: "", discount: "" }]);
+
       setSelectedParentId("");
       setSelectedSubId("");
       setThumbnailUrl(null);
@@ -385,17 +442,21 @@ export default function AddProductForm() {
       setIsSaving(false);
     }
   };
-  
-  
-  
+
+  if (error) {
+    toast.error(error || 'Something Went Wrong', {
+      position: "bottom-right",
+    });
+  }
+
   return (
-    <section className=" overflow-hidden  sm:mt-2 relative lg:max-w-[1060px] mx-auto 2xl:max-w-full bg-white sm:px-10">
+    <section className=" overflow-hidden  sm:mt-2 relative lg:max-w-[1060px] mx-auto 2xl:max-w-full bg-white  sm:px-2 lg:px-4">
       <form onSubmit={handleSubmit(onSubmit)} className="p-4">
         {/* Left Side - Inputs */}
         <h2 className="text-md font-semibold   2xl:px-4 mb-5 flex items-center    ">
           <span className="border bg-primary text-white  flex px-2 py-1 rounded-full">
             {" "}
-            Add Product Form 
+            Add Product Form
           </span>
         </h2>
 
@@ -452,213 +513,142 @@ export default function AddProductForm() {
             {errors.type && (
               <p className="text-red-500 text-sm mt-1">{errors.type.message}</p>
             )}
+
+            {/* VARIANT SECTION */}
             {productType === "variant" && (
-              <div className="mt-6">
-                <h3 className="text-lg font-semibold mb-4">Variants</h3>
+              <section className="border p-6  bg-white  mt-5">
+                <h3 className="text-xl font-semibold mb-4 text-purple-600">
+                  Variants
+                </h3>
 
-                <div className="overflow-x-auto   bg-white">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-destructive text-white py-2">
-                      <tr>
-                        <th className="px-4 py-2 border text-left text-sm font-medium ">
-                          Variant
-                        </th>
-                        <th className="px-4 py-2 border text-left text-sm font-medium ">
-                          Price
-                        </th>
-                        <th className="px-4 py-2 border text-left text-sm font-medium ">
-                          Quantity
-                        </th>
-                        <th className="px-4 py-2 border text-left text-sm font-medium ">
-                          SKU
-                        </th>
-                        <th className="px-4 py-2 border text-left text-sm font-medium ">
-                          Discount
-                        </th>
-                        <th className="px-4 py-2 border text-center text-sm font-medium ">
-                          Action
-                        </th>
-                      </tr>
-                    </thead>
-
-                    <tbody className="divide-y divide-gray-200">
-                      {variantInput?.map((variant, index) => (
-                        <tr key={index}>
-                          <td className="px-4 py-2 border">
-                            <input
-                              type="text"
-                              placeholder="39,40, M,L,XL"
-                              value={variant.variant}
-                              onChange={(e) => {
-                                const updated = [...variantInput];
-                                updated[index].variant = e.target.value;
-                                setVariantInput(updated);
-                              }}
-                              className="w-full h-10 px-3 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
-                            />
-                          </td>
-
-                          <td className="px-4 py-2 border">
-                            <input
-                              type="number"
-                              placeholder="Price"
-                              value={variant.price}
-                              onChange={(e) => {
-                                const updated = [...variantInput];
-                                updated[index].price = e.target.value;
-                                setVariantInput(updated);
-                              }}
-                              className="w-full h-10 px-3 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
-                            />
-                          </td>
-
-                          <td className="px-4 py-2 border">
-                            <input
-                              type="number"
-                              placeholder="Quantity"
-                              value={variant.quantity}
-                              onChange={(e) => {
-                                const updated = [...variantInput];
-                                updated[index].quantity = e.target.value;
-                                setVariantInput(updated);
-                              }}
-                              className="w-full h-10 px-3 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
-                            />
-                          </td>
-
-                          <td className="px-4 py-2 border">
-                            <input
-                              type="text"
-                              placeholder="SKU"
-                              value={variant.sku}
-                              onChange={(e) => {
-                                const updated = [...variantInput];
-                                updated[index].sku = e.target.value;
-                                setVariantInput(updated);
-                              }}
-                              className="w-full h-10 px-3 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
-                            />
-                          </td>
-
-                          <td className="px-4 py-2 border">
-                            <input
-                              type="number"
-                              placeholder="Discount"
-                              value={variant.discount}
-                              onChange={(e) => {
-                                const updated = [...variantInput];
-                                updated[index].discount = e.target.value;
-                                setVariantInput(updated);
-                              }}
-                              className="w-full h-10 px-3 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
-                            />
-                          </td>
-
-                          <td className="px-4 py-2 border text-center">
-                            <Button
-                              type="button"
-                              onClick={() =>
-                                setVariantInput((prev) =>
-                                  prev.filter((_, i) => i !== index)
-                                )
-                              }
-                              variant="destructive"
-                              size="sm"
-                            >
-                              X
-                            </Button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                <div className="mt-3">
-                  <Button
-                    type="button"
-                    onClick={() =>
-                      setVariantInput((prev) => [
-                        ...prev,
-                        {
-                          variant: "",
-                          price: "",
-                          quantity: "",
-                          sku: "",
-                          discount: "",
-                        },
-                      ])
-                    }
-                    className="flex items-center gap-2"
-                  >
-                    <Plus /> Add Variant
-                  </Button>
-                </div>
-
-                {/* Colors Section */}
-                <div className="mt-6">
-                  <h3 className="text-lg font-semibold mb-2">Colors</h3>
-
-                  <div className="flex flex-wrap gap-2 mb-3">
-                    {initialColors.map((color) => (
-                      <Button
-                        key={color}
-                        type="button"
-                        onClick={() => addColor(color)}
-                        variant={colors.includes(color) ? "default" : "outline"}
-                        size="sm"
-                      >
-                        {color}
-                      </Button>
-                    ))}
-                  </div>
-
-                  {!showColorInput ? (
-                    <Button
-                      type="button"
-                      onClick={() => setShowColorInput(true)}
-                      size="sm"
+                {/* ATTRIBUTES */}
+                <div className="mb-4">
+                  {attrFields.map((attr, i) => (
+                    <div
+                      key={attr.id}
+                      className="border p-4 rounded-lg mb-3 bg-gray-50 flex flex-col gap-2"
                     >
-                      <Plus /> Add Custom Color
-                    </Button>
-                  ) : (
-                    <div className="flex gap-2 mt-2">
                       <input
-                        type="text"
-                        value={colorInput}
-                        onChange={(e) => setColorInput(e.target.value)}
-                        placeholder="Enter color (e.g. Olive)"
-                        className="flex-grow h-10 px-3 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+                        {...register(`attributes.${i}.name`)}
+                        placeholder="Attribute Name (Color, Size, etc.)"
+                        className="border p-2 rounded bg-white "
                       />
-                      <Button
+                      <textarea
+                        {...register(`attributes.${i}.values`)}
+                        placeholder="Values (comma separated)"
+                        rows={2}
+                        className="border p-2 rounded bg-white"
+                      />
+                      <button
                         type="button"
-                        onClick={() => addColor(colorInput)}
-                        size="sm"
+                        onClick={() => removeAttr(i)}
+                        className="flex items-center gap-1 text-red-600"
                       >
-                        Add
-                      </Button>
+                        <Trash2 size={16} /> Remove
+                      </button>
                     </div>
-                  )}
-
-                  <div className="flex flex-wrap gap-2 mt-3">
-                    {colors.map((color) => (
-                      <span
-                        key={color}
-                        className="flex items-center gap-1 px-3 py-1 bg-primary text-white rounded-full text-sm"
-                      >
-                        {color}
-                        <button
-                          type="button"
-                          onClick={() => removeColor(color)}
-                          className="ml-1 text-red-200 font-bold hover:text-red-400"
-                        >
-                          &times;
-                        </button>
-                      </span>
-                    ))}
+                  ))}
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => addAttr({ name: "", values: "" })}
+                      className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg"
+                    >
+                      <Plus size={16} /> Add Attribute
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleGenerateVariants}
+                      className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg"
+                    >
+                      Generate Variants
+                    </button>
                   </div>
                 </div>
-              </div>
+
+                {/* APPLY TO ALL */}
+                {variantFields.length > 0 && (
+                  <div className="border p-4 rounded-lg mb-4 bg-gray-50">
+                    <h4 className="text-lg font-semibold mb-2">
+                      Apply to All Variants
+                    </h4>
+                    <div className="grid grid-cols-4 gap-2">
+                      {["price", "discount", "quantity"].map((field) => (
+                        <input
+                          key={field}
+                          placeholder={
+                            field.charAt(0).toUpperCase() + field.slice(1)
+                          }
+                          className="border p-2 rounded bg-white"
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            variantFields.forEach((v, idx) =>
+                              setValue(`variants.${idx}.${field}`, val)
+                            );
+                          }}
+                        />
+                      ))}
+                    </div>
+                    <p className="text-sm text-gray-500 mt-1">
+                      These values will be applied to all variants. You can
+                      still edit individual variants below.
+                    </p>
+                  </div>
+                )}
+
+                {/* INDIVIDUAL VARIANTS */}
+                {variantFields.length > 0 &&
+                  variantFields.map((variant, idx) => (
+                    <div
+                      key={variant.id}
+                      className="border p-4 rounded-lg mb-3 bg-white flex flex-col gap-3"
+                    >
+                      <div className="flex flex-wrap gap-2">
+                        {Object.entries(variant.attributes).map(([k, v]) => (
+                          <span
+                            key={k}
+                            className="px-2 py-1 bg-blue-100 text-blue-800 rounded"
+                          >
+                            {k}: {v}
+                          </span>
+                        ))}
+                      </div>
+                      <div className="grid grid-cols-4 gap-2">
+                        <input
+                          {...register(`variants.${idx}.price`)}
+                          type="number"
+                          placeholder="Price"
+                          className="border p-2 rounded"
+                        />
+                        <input
+                          {...register(`variants.${idx}.discount`)}
+                          type="number"
+                          placeholder="Discount"
+                          className="border p-2 rounded"
+                        />
+                        <input
+                          {...register(`variants.${idx}.quantity`)}
+                          type="number"
+                          placeholder="Quantity"
+                          className="border p-2 rounded"
+                        />
+                        <input
+                          {...register(`variants.${idx}.sku`)}
+                          placeholder="SKU"
+                          className="border p-2 rounded"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeVariant(idx)}
+                        className="flex items-center gap-1 text-red-600"
+                      >
+                        <Trash2 size={16} /> Remove Variant
+                      </button>
+                    </div>
+                  ))}
+                {/* PRODUCT DESCRIPTION */}
+              </section>
             )}
 
             {/* Simple Product Pricing & Stock */}

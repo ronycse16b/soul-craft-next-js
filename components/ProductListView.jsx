@@ -1,105 +1,86 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
-import Image from "next/image";
+import React, { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import axios from "axios";
 import ProductCard from "./ProductCard";
-// import { formatDistanceToNow } from "date-fns"; // optional friendly timestamps
+import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { HashLoader } from "react-spinners";
 
-/**
- * ProductListView
- *
- * Props (optional):
- * - productsFromServer: array of product objects OR null if you want this component to fetch by itself
- * - fetchProducts: async function({ page, pageSize, filters, search }) => { items, total }
- *
- * Product shape example:
- * {
- *   id, productName, brand, thumbnail, sizes: [{ price, sku, quantity }], category, colors: [], createdAt
- * }
- *
- * NOTE: Replace mockFetch with your real API call (axios/fetch) or pass a fetchProducts prop.
- */
 
-const PRIMARY = "#f69224";
-const SECONDARY = "#6fd300";
+export default function ProductListView({ slug }) {
+  const [page, setPage] = useState(1);
+  const [pageSize] = useState(12);
+  const [selectedSub, setSelectedSub] = useState(null);
+  const [selectedFilters, setSelectedFilters] = useState({});
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [sortBy, setSortBy] = useState("newest");
 
-function mockFetch({ page, pageSize, filters, search }) {
-  // Mock: returns generated items and total count; replace with API
-  const total = 57;
-  const start = (page - 1) * pageSize;
-  const items = new Array(pageSize).fill(0).map((_, i) => {
-    const id = start + i + 1;
-    return {
-      id,
-      productName: `Product ${id}`,
-      brand: ["Acme", "Makers", "CraftCo"][id % 3],
-      thumbnail: "/p1.png" + id,
-      sizes: [
-        {
-          price: (20 + id).toFixed(2),
-          sku: `SKU-${1000 + id}`,
-          quantity: id % 5,
-        },
-      ],
-      category: ["Power Tools", "Hand Tools", "Accessories"][id % 3],
-      colors: ["Black", "Coffee", "Master"].slice(0, (id % 3) + 1),
-      createdAt: new Date(Date.now() - id * 86400000).toISOString(),
-      rating: (Math.random() * 2 + 3).toFixed(1),
-    };
+  // Fetch products using TanStack Query
+  const { data, isFetching } = useQuery({
+    queryKey: ["products", slug, selectedSub, selectedFilters, page, sortBy],
+    queryFn: async () => {
+      const filtersQuery = Object.entries(selectedFilters)
+        .map(([key, vals]) => `${key}:${vals.join(",")}`)
+        .join("|");
+
+      const url = `/api/products-by-category?slug=${slug}&page=${page}&pageSize=${pageSize}&sort=${sortBy}${
+        selectedSub ? `&subCategoriesId=${selectedSub}` : ""
+      }${filtersQuery ? `&filters=${filtersQuery}` : ""}`;
+
+      const res = await axios.get(url);
+      return res.data;
+    },
+    keepPreviousData: false, // ensures new query replaces previous products
   });
-  return new Promise((res) => setTimeout(() => res({ items, total }), 350));
-}
 
-/* --- Product Card --- */
-// function ProductCard({ product }) {
-//   const price = product.sizes?.[0]?.price ?? "—";
-//   return (
-//     <div className="bg-white rounded-lg shadow-sm overflow-hidden flex flex-col">
-//       <div className="relative w-full aspect-square">
-//         <Image
-//           src={product.thumbnail}
-//           alt={product.productName}
-//           fill
-//           className="object-cover"
-//         />
-//       </div>
-//       <div className="p-3 flex-1 flex flex-col justify-between">
-//         <div>
-//           <h3 className="text-sm font-semibold text-gray-800">
-//             {product.productName}
-//           </h3>
-//           <p className="text-xs text-gray-500">{product.brand}</p>
-//           <div className="mt-2 text-sm font-medium" style={{ color: PRIMARY }}>
-//             ${price}
-//           </div>
-//         </div>
-//         <div className="mt-3 flex items-center justify-between text-xs text-gray-500">
-//           <div>{product.colors?.slice(0, 2).join(", ")}</div>
-//           {/* <div title={product.createdAt}>
-//             {formatDistanceToNow(new Date(product.createdAt), {
-//               addSuffix: true,
-//             })}
-//           </div> */}
-//         </div>
-//       </div>
-//     </div>
-//   );
-// }
+  const products = data?.result ?? [];
+  const subCategories = data?.subCategories ?? [];
+  const filters = data?.filters ?? {};
+  const pagination = data?.pagination ?? { total: 0, page: 1, pages: 1 };
+  const totalPages = pagination.pages;
 
-/* --- Pagination Controls --- */
-function Pagination({ page, totalPages, setPage }) {
+  const toggleFilter = (key, value) => {
+    setSelectedFilters((prev) => {
+      const current = new Set(prev[key] || []);
+      current.has(value) ? current.delete(value) : current.add(value);
+      return { ...prev, [key]: [...current] };
+    });
+    setPage(1);
+  };
+
+  const clearFilters = () => {
+    setSelectedFilters({});
+    setSelectedSub(null);
+    setSortBy("newest");
+    setPage(1);
+  };
+
+const Pagination = () => {
+  const maxVisible = 5; // max buttons to show at once (excluding Prev/Next)
   const pages = [];
-  const start = Math.max(1, page - 2);
-  const end = Math.min(totalPages, start + 4);
-  for (let p = start; p <= end; p++) pages.push(p);
+
+  let start = Math.max(1, page - 2);
+  let end = Math.min(totalPages, start + maxVisible - 1);
+
+  if (end - start < maxVisible - 1) {
+    start = Math.max(1, end - maxVisible + 1);
+  }
+
+  for (let p = start; p <= end; p++) {
+    pages.push(p);
+  }
+
+  const handlePrev = () => setPage(Math.max(1, page - 1));
+  const handleNext = () => setPage(Math.min(totalPages, page + 1));
+
+  const handleEllipsisLeft = () => setPage(Math.max(1, start - 1));
+  const handleEllipsisRight = () => setPage(Math.min(totalPages, end + 1));
 
   return (
-    <div className="flex items-center gap-2">
-      <button
-        onClick={() => setPage(Math.max(1, page - 1))}
-        className="px-3 py-1 rounded border text-sm"
-        aria-label="Previous page"
-      >
+    <div className="flex items-center gap-2 flex-wrap">
+      <button onClick={handlePrev} className="px-3 py-1 border rounded text-sm">
         Prev
       </button>
 
@@ -107,11 +88,18 @@ function Pagination({ page, totalPages, setPage }) {
         <>
           <button
             onClick={() => setPage(1)}
-            className="px-3 py-1 rounded text-sm border"
+            className="px-3 py-1 border rounded text-sm"
           >
             1
           </button>
-          {start > 2 && <span className="px-2">…</span>}
+          {start > 2 && (
+            <button
+              onClick={handleEllipsisLeft}
+              className="px-2 py-1 border rounded text-sm"
+            >
+              …
+            </button>
+          )}
         </>
       )}
 
@@ -120,7 +108,7 @@ function Pagination({ page, totalPages, setPage }) {
           key={p}
           onClick={() => setPage(p)}
           className={`px-3 py-1 rounded text-sm border ${
-            p === page ? "bg-orange-500 text-white border-orange-500" : ""
+            p === page ? "bg-destructive text-white border-destructive" : ""
           }`}
         >
           {p}
@@ -129,135 +117,52 @@ function Pagination({ page, totalPages, setPage }) {
 
       {end < totalPages && (
         <>
-          {end < totalPages - 1 && <span className="px-2">…</span>}
+          {end < totalPages - 1 && (
+            <button
+              onClick={handleEllipsisRight}
+              className="px-2 py-1 border rounded text-sm"
+            >
+              …
+            </button>
+          )}
           <button
             onClick={() => setPage(totalPages)}
-            className="px-3 py-1 rounded text-sm border"
+            className="px-3 py-1 border rounded text-sm"
           >
             {totalPages}
           </button>
         </>
       )}
 
-      <button
-        onClick={() => setPage(Math.min(totalPages, page + 1))}
-        className="px-3 py-1 rounded border text-sm"
-        aria-label="Next page"
-      >
+      <button onClick={handleNext} className="px-3 py-1 border rounded text-sm">
         Next
       </button>
     </div>
   );
-}
+};
 
-/* --- Main Component --- */
-export default function ProductListView({
-  productsFromServer = null,
-  fetchProducts = null,
-}) {
-  // pagination + filters + search states
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(12);
-  const [total, setTotal] = useState(0);
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
-
-  const [products, setProducts] = useState(productsFromServer ?? []);
-  const [loading, setLoading] = useState(false);
-
-  // filters
-  const [category, setCategory] = useState("All");
-  const [priceRange, setPriceRange] = useState([0, 1000]); // min, max
-  const [selectedBrands, setSelectedBrands] = useState([]);
-  const [search, setSearch] = useState("");
-
-  // UI: collapse filters on mobile
-  const [filtersOpen, setFiltersOpen] = useState(false);
-
-  // Derived list of available brands/categories from currently loaded products (local)
-  const availableBrands = useMemo(() => {
-    const setB = new Set();
-    products.forEach((p) => p.brand && setB.add(p.brand));
-    return Array.from(setB).slice(0, 12);
-  }, [products]);
-
-  // Fetcher (either from prop or mock)
-  async function load({ page, pageSize, replace = true }) {
-    setLoading(true);
-    try {
-      const fetcher = fetchProducts ?? mockFetch;
-      const { items, total: t } = await fetcher({
-        page,
-        pageSize,
-        filters: { category, priceRange, brands: selectedBrands },
-        search,
-      });
-      setTotal(t);
-      if (replace) setProducts(items);
-      else setProducts((prev) => [...prev, ...items]);
-    } catch (e) {
-      console.error("load products error", e);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  // initial + whenever page/filters/search change
-  useEffect(() => {
-    setPage(1);
-    load({ page: 1, pageSize, replace: true });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    category,
-    selectedBrands.join(","),
-    priceRange.join(","),
-    search,
-    pageSize,
-  ]);
-
-  // when page changes (pagination click)
-  useEffect(() => {
-    load({ page, pageSize, replace: true });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page]);
-
-  // toggle brand in selectedBrands
-  function toggleBrand(brand) {
-    setSelectedBrands((prev) =>
-      prev.includes(brand) ? prev.filter((b) => b !== brand) : [...prev, brand]
-    );
-  }
-
-  // helper: clear filters
-  function clearFilters() {
-    setCategory("All");
-    setSelectedBrands([]);
-    setPriceRange([0, 1000]);
-    setSearch("");
-  }
 
   return (
-    <div className=" py-8">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-md font-bold" style={{ color: PRIMARY }}>
-          Home / Shop
-        </h1>
-
+    <div className="py-8">
+      {/* Header */}
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-md font-bold text-destructive">Shop</h1>
         <div className="flex items-center gap-3">
-          <div className="hidden sm:flex items-center gap-2">
-            <label className="text-sm text-gray-600">Show</label>
+          <div className="hidden sm:block">
             <select
-              value={pageSize}
-              onChange={(e) => setPageSize(Number(e.target.value))}
+              value={sortBy}
+              onChange={(e) => {
+                setSortBy(e.target.value);
+                setPage(1);
+              }}
               className="border rounded px-2 py-1"
             >
-              <option value={8}>8</option>
-              <option value={12}>12</option>
-              <option value={24}>24</option>
+              <option value="newest">Newest</option>
+              <option value="priceAsc">Price: Low to High</option>
+              <option value="priceDesc">Price: High to Low</option>
             </select>
           </div>
-
           <div className="sm:hidden">
-            {/* Mobile: toggles filters */}
             <button
               className="px-3 py-1 rounded border"
               onClick={() => setFiltersOpen((s) => !s)}
@@ -269,152 +174,101 @@ export default function ProductListView({
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Filters column */}
+        {/* Sidebar */}
         <aside
-          className={`lg:col-span-3 ${
+          className={`lg:col-span-3 border-r  ${
             filtersOpen ? "block" : "hidden"
-          } sm:block bg-white    max-h-[350px] `}
+          } sm:block bg-white rounded-md  p-4`}
         >
           <div className="flex items-center justify-between mb-4">
-            <h2 className="font-semibold">Filters</h2>
+            <h2 className="font-semibold text-gray-800">Filters</h2>
             <button onClick={clearFilters} className="text-xs text-gray-500">
               Clear
             </button>
           </div>
 
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-2">Category</label>
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="w-full border rounded px-2 py-1"
-              >
-                <option>All</option>
-                <option>Power Tools</option>
-                <option>Hand Tools</option>
-                <option>Accessories</option>
-              </select>
+          {/* Subcategories */}
+          {subCategories?.length > 0 && (
+            <div className="mb-4">
+              <h3 className="text-sm font-medium mb-2">Category</h3>
+              <div className="flex flex-col gap-1">
+                <button
+                  onClick={() => setSelectedSub(null)}
+                  className={`text-left px-3 py-1 rounded border text-sm uppercase ${
+                    selectedSub === null
+                      ? "bg-orange-500 text-white border-orange-500"
+                      : "hover:bg-orange-100"
+                  }`}
+                >
+                  {slug}
+                </button>
+                {subCategories?.map((sub) => (
+                  <button
+                    key={sub._id}
+                    onClick={() => setSelectedSub(sub._id)}
+                    className={`text-left px-3 py-1 rounded border text-sm uppercase ${
+                      selectedSub === sub._id
+                        ? "bg-orange-500 text-white border-orange-500"
+                        : "hover:bg-orange-100"
+                    }`}
+                  >
+                    {sub.name}
+                  </button>
+                ))}
+              </div>
             </div>
+          )}
 
-            <div>
-              <label className="block text-sm font-medium mb-2">Brands</label>
+          {/* Dynamic attribute filters */}
+          {Object.entries(filters).map(([key, values]) => (
+            <div key={key} className="mb-4">
+              <h3 className="text-sm font-medium mb-2 capitalize">{key}</h3>
               <div className="flex flex-wrap gap-2">
-                {availableBrands.length === 0 ? (
-                  <div className="text-xs text-gray-400">No brands yet</div>
-                ) : (
-                  availableBrands.map((b) => (
-                    <button
-                      key={b}
-                      onClick={() => toggleBrand(b)}
-                      className={`px-2 py-1 border rounded text-sm ${
-                        selectedBrands.includes(b)
-                          ? "bg-orange-500 text-white border-orange-500"
-                          : ""
-                      }`}
-                    >
-                      {b}
-                    </button>
-                  ))
-                )}
+                {values.map((v) => (
+                  <button
+                    key={v}
+                    onClick={() => toggleFilter(key, v)}
+                    className={`px-2 py-1 border rounded text-xs ${
+                      selectedFilters[key]?.includes(v)
+                        ? "bg-orange-500 text-white border-orange-500"
+                        : "hover:bg-orange-100"
+                    }`}
+                  >
+                    {v}
+                  </button>
+                ))}
               </div>
             </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-2">Price</label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="number"
-                  value={priceRange[0]}
-                  onChange={(e) =>
-                    setPriceRange([Number(e.target.value || 0), priceRange[1]])
-                  }
-                  className="w-1/2 border rounded px-2 py-1"
-                  placeholder="Min"
-                />
-                <input
-                  type="number"
-                  value={priceRange[1]}
-                  onChange={(e) =>
-                    setPriceRange([priceRange[0], Number(e.target.value || 0)])
-                  }
-                  className="w-1/2 border rounded px-2 py-1"
-                  placeholder="Max"
-                />
-              </div>
-            </div>
-
-            <div>
-              <button
-                onClick={() => {
-                  setPage(1);
-                  load({ page: 1, pageSize, replace: true });
-                  setFiltersOpen(false);
-                }}
-                className="w-full py-2 rounded text-white bg-destructive"
-                
-              >
-                Apply
-              </button>
-            </div>
-          </div>
+          ))}
         </aside>
 
-        {/* Products column */}
+        {/* Products */}
         <main className="lg:col-span-9">
-          <div className="mb-4 flex items-center justify-between">
-            <div className="text-sm text-gray-600">
-              Showing <strong>{Math.min(products.length, total)}</strong> of{" "}
-              <strong>{total}</strong>
+          {isFetching ? (
+            <div className="flex items-center justify-center  min-h-[500px]">
+              <HashLoader color="#e50000" size={50} />
             </div>
-
-            {/* <div className="hidden sm:flex items-center gap-3">
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search products..."
-                className="px-3 py-2 border rounded w-64"
-              />
-            </div> */}
-          </div>
-
-          {/* Product grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {loading && products.length === 0 ? (
-              // skeletons
-              new Array(pageSize)
-                .fill(0)
-                .map((_, i) => (
-                  <div
-                    key={i}
-                    className="bg-white rounded-lg animate-pulse h-60"
-                  />
-                ))
-            ) : products.length === 0 ? (
-              <div className="col-span-full text-center py-16 text-gray-500">
-                No products found.
+          ) : products?.length === 0 ? (
+            <div className="text-center text-gray-500 py-12">
+              No products found.
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                {products?.map((p) => (
+                  <ProductCard key={p._id} product={p} />
+                ))}
               </div>
-            ) : (
-              products.map((p) => <ProductCard key={p.id} product={p} />)
-            )}
-          </div>
 
-          {/* Pagination + Load more */}
-          <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div>
-              <Pagination
-                page={page}
-                totalPages={totalPages}
-                setPage={setPage}
-              />
-            </div>
-
-            <div className="flex items-center gap-3">
-              <div className="text-sm text-gray-500">
-                Page {page} of {totalPages}
+              {/* Pagination */}
+              <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <Pagination />
+                <div className="text-sm text-gray-600">
+                  Page {pagination.page} of {pagination.pages}
+                </div>
               </div>
-            </div>
-          </div>
+            </>
+          )}
         </main>
       </div>
     </div>

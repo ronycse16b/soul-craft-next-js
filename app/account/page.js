@@ -10,7 +10,7 @@ export const metadata = {
 
 export default function page() {
   return (
-    <Container className="my-10">
+    <Container className="my-10 px-1">
         <AccountPage/>
     </Container>
   )

@@ -1,6 +1,10 @@
 import { connectDB } from "@/lib/db.config";
+import AddressBookModel from "@/models/address.book.model";
+
 import userModel from "@/models/user.model";
 import { NextResponse } from "next/server";
+
+
 
 export async function POST(req) {
   try {
@@ -22,19 +26,33 @@ export async function POST(req) {
       name,
       emailOrPhone,
       password,
-      address: "N/A",
     });
 
     await user.save();
 
+    // Create a new address book entry for the user
+    const address = new AddressBookModel({
+      userId: user._id,
+      addresses: [
+        {
+          name: name || "",
+          deliveryAddress: "",
+          phone: "",
+          isDefault: false,
+        },
+      ],
+    });
+
+    await address.save();
+
     const userData = {
       name: user?.name,
-      emailOrPhone:emailOrPhone,
+      emailOrPhone: emailOrPhone,
       role: user?.role,
     };
 
     return NextResponse.json(
-      { message: "User created successfully", data:userData },
+      { message: "User created successfully", data: userData },
       { status: 201 }
     );
   } catch (error) {

@@ -2,8 +2,14 @@ import Advertisement from "@/models/advertisement.model";
 import { connectDB } from "@/lib/db.config";
 import fs from "fs/promises";
 import path from "path";
+import { verifyAccess } from "@/lib/roleMiddleware";
 
 export async function PUT(req, { params }) {
+    const auth = await verifyAccess(req, {
+      roles: ["admin", "moderator"],
+      permission: "update",
+    });
+    if (auth instanceof Response) return auth;
   const {id} = await params;
   await connectDB();
   const data = await req.json();
@@ -14,6 +20,11 @@ export async function PUT(req, { params }) {
 }
 
 export async function DELETE(req, { params }) {
+    const auth = await verifyAccess(req, {
+      roles: ["admin", "moderator"],
+      permission: "delete",
+    });
+    if (auth instanceof Response) return auth;
   const {id} = await params;
   await connectDB();
 

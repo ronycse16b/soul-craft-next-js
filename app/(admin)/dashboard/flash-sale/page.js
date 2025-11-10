@@ -57,8 +57,6 @@ export default function FlashSaleManager() {
   };
 
   const isoFromLocalInput = (localInputValue) => {
-    // localInputValue like "2025-10-30T14:30" -> convert to ISO string (with timezone)
-    // create date using local components to preserve user-chosen local time
     if (!localInputValue) return null;
     const d = new Date(localInputValue);
     return d.toISOString();
@@ -126,123 +124,169 @@ export default function FlashSaleManager() {
 
   // ==================== HANDLERS ====================
 
-  const handleEdit = (sale) => {
-    setEditId(sale._id);
+const handleEdit = (sale) => {
+  if (!sale) return;
 
-    // Map products to form.products preserving discounts, selectedVariant/sku and product meta
-    // sale.products could be array of objects like: { productId: {...}, discount, variant? , sku? }
-    const mappedProducts = (sale.products || []).map((entry) => {
-      const productMeta = entry.productId || entry; // attempt both shapes
-      return {
-        _id: productMeta._id || productMeta.id || entry._id,
-        productName:
-          productMeta.productName ||
-          productMeta.name ||
-          entry.productName ||
-          "Untitled",
-        type: productMeta.type || productMeta.productType || "simple",
-        sku: entry.sku || productMeta.sku || null,
-        // variant info could be in entry.variant or productMeta.variant
-        variant: entry.variant || productMeta.variant || null,
-        attributes: productMeta.attributes || entry.attributes || null,
-        discount:
-          entry.discount != null ? entry.discount : productMeta.discount || 0,
-        // keep raw product object if needed later
-        _raw: productMeta,
-      };
-    });
+  setEditId(sale._id);
 
-    setForm({
-      title: sale.title || "",
-      // convert sale.endTime (ISO) to local datetime-local value
-      endTime: sale.endTime ? toLocalDatetimeInput(sale.endTime) : "",
-      description: sale.description || "",
-      products: mappedProducts,
-    });
+  // 🧩 Normalize sale products for edit modal
+  const mappedProducts = (sale.products || []).map((entry) => {
+    const productMeta = entry.productId || entry;
+    const isVariantType = productMeta.type === "variant";
 
-    setSelectedIds(mappedProducts.map((p) => p._id));
-    setModalOpen(true);
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-
-    if (!form.title) return toast.error("Title is required");
-    if (!form.endTime) return toast.error("End time is required");
-
-    // Build payload preserving sku/variant and discount
-    const selectedProductsPayload = form.products.map((p) => {
-      return {
-        productId: p._id,
-        discount: Number(p.discount || 0),
-        sku: p.sku || (p._raw && p._raw.sku) || null,
-        variant: p.variant || null,
-      };
-    });
-
-    // convert local datetime-local to ISO
-    const payload = {
-      title: form.title,
-      description: form.description,
-      endTime: isoFromLocalInput(form.endTime),
-      products: selectedProductsPayload,
-    };
-
-    // if trying to create new but active flash exists, block
-    if (!editId) {
-      const activeFlashExists = (flashSales.flashSales || []).some(
-        (f) => new Date(f.endTime) > new Date()
-      );
-      if (activeFlashExists) {
-        toast.error("An active flash sale already running. Edit it instead.");
-        return;
-      }
+    // Handle variant-level info
+    let variantData = null;
+    if (isVariantType && Array.isArray(productMeta.variants)) {
+      variantData = productMeta.variants.map((v) => ({
+        sku: v.sku || null,
+        price: v.price || 0,
+        discount: v.discount || 0,
+        attributes: v.attributes || {},
+        quantity: v.quantity || 0,
+      }));
     }
 
-    mutation.mutate(payload);
+    return {
+      _id: productMeta._id || productMeta.id || entry._id || null,
+      productName:
+        productMeta.productName ||
+        productMeta.name ||
+        entry.productName ||
+        "Untitled",
+      type: productMeta.type || productMeta.productType || "simple",
+      sku: entry.sku || productMeta.sku || null,
+      discount:
+        entry.discount != null ? entry.discount : productMeta.discount || 0,
+      attributes: productMeta.attributes || entry.attributes || {},
+      variants: variantData,
+      _raw: productMeta, // keep raw for advanced logic if needed
+    };
+  });
+
+  // 🧾 Set form values for modal
+  setForm({
+    title: sale.title || "",
+    description: sale.description || "",
+    endTime: sale.endTime ? toLocalDatetimeInput(sale.endTime) : "",
+    products: mappedProducts,
+  });
+
+  setSelectedIds(mappedProducts.map((p) => p._id));
+  setModalOpen(true);
+};
+
+
+const handleSubmit = (e) => {
+  e.preventDefault();
+
+  // 🧾 Basic validation
+  if (!form.title?.trim()) return toast.error("Title is required");
+  if (!form.endTime) return toast.error("End time is required");
+
+  // 🧩 Build product payload
+  const selectedProductsPayload = (form.products || []).map((p) => {
+    // For variant-type products, handle possible nested variant list
+    const productItem = {
+      productId: p._id,
+      discount: Number(p.discount || 0),
+      sku: p.sku || p._raw?.sku || null,
+      variant: p.variant || null,
+    };
+
+    // Optional: include variant array if present
+    if (Array.isArray(p.variants) && p.variants.length > 0) {
+      productItem.variants = p.variants.map((v) => ({
+        sku: v.sku || null,
+        price: Number(v.price || 0),
+        discount: Number(v.discount || 0),
+        quantity: Number(v.quantity || 0),
+        attributes: v.attributes || {},
+      }));
+    }
+
+    return productItem;
+  });
+
+  // 🕒 Convert local datetime to ISO
+  const payload = {
+    title: form.title.trim(),
+    description: form.description?.trim() || "",
+    endTime: isoFromLocalInput(form.endTime),
+    products: selectedProductsPayload,
   };
+
+  // 🚫 Prevent duplicate active flash sales on create
+  if (!editId) {
+    const activeFlashExists = (flashSales.flashSales || []).some(
+      (f) => new Date(f.endTime) > new Date()
+    );
+    if (activeFlashExists) {
+      toast.error(
+        "An active flash sale is already running. Please edit it instead."
+      );
+      return;
+    }
+  }
+
+  // 🚀 Submit via mutation
+  mutation.mutate(payload);
+};
+
 
   // when toggling selection from product list
 const toggleSelect = (id) => {
-  setSelectedIds((prev) => {
-    const already = prev.includes(id);
+  setSelectedIds((prevSelected) => {
+    const isAlreadySelected = prevSelected.includes(id);
 
-    if (already) {
-      // remove selection AND remove from form.products
+    if (isAlreadySelected) {
+      // 🧹 Remove from selected list & form
       setForm((prevForm) => ({
         ...prevForm,
-        products: prevForm.products.filter((fp) => fp._id !== id),
+        products: prevForm.products.filter((item) => item._id !== id),
       }));
-      return prev.filter((pid) => pid !== id);
-    } else {
-      // only add if not already in form.products
-      setForm((prevForm) => {
-        if (prevForm.products.some((fp) => fp._id === id)) return prevForm;
-
-        const product = products.find((p) => p._id === id);
-        if (!product) return prevForm;
-
-        const newItem = {
-          _id: product._id,
-          productName: product.productName || product.name || "Untitled",
-          type: product.type || product.productType || "simple",
-          sku: product.sku || null,
-          variant: null,
-          attributes: product.attributes || null,
-          discount: 0,
-          _raw: product,
-        };
-
-        return {
-          ...prevForm,
-          products: [...prevForm.products, newItem],
-        };
-      });
-
-      return [...prev, id];
+      return prevSelected.filter((pid) => pid !== id);
     }
+
+    // 🧩 Add new product selection
+    const product = products.find((p) => p._id === id);
+    if (!product) return prevSelected; // Safety check
+
+    setForm((prevForm) => {
+      // Prevent duplicate additions
+      if (prevForm.products.some((fp) => fp._id === id)) return prevForm;
+
+      const newItem = {
+        _id: product._id,
+        productName: product.productName || product.name || "Untitled",
+        type: product.type || product.productType || "simple",
+        sku: product.sku || null,
+        variant: null,
+        attributes: product.attributes || {},
+        discount: 0,
+        _raw: product,
+      };
+
+      // If the product is a variant-type, include its variants info
+      if (product.type === "variant" && Array.isArray(product.variants)) {
+        newItem.variants = product.variants.map((v) => ({
+          sku: v.sku || null,
+          price: v.price || 0,
+          discount: v.discount || 0,
+          quantity: v.quantity || 0,
+          attributes: v.attributes || {},
+        }));
+      }
+
+      return {
+        ...prevForm,
+        products: [...prevForm.products, newItem],
+      };
+    });
+
+    return [...prevSelected, id];
   });
 };
+
 
   // update discount for a product in form.products
   const updateProductDiscount = (productId, value) => {
@@ -251,18 +295,6 @@ const toggleSelect = (id) => {
       ...prev,
       products: prev.products.map((p) =>
         p._id === productId ? { ...p, discount } : p
-      ),
-    }));
-  };
-
-  // update selected variant/sku for a product in form.products (if UI added later)
-  const updateProductVariant = (productId, variantObj) => {
-    setForm((prev) => ({
-      ...prev,
-      products: prev.products.map((p) =>
-        p._id === productId
-          ? { ...p, variant: variantObj, sku: variantObj?.sku || p.sku }
-          : p
       ),
     }));
   };
@@ -324,6 +356,7 @@ const toggleSelect = (id) => {
           className="flex-1 border border-gray-300 rounded-none"
         />
         <Button
+        disabled={activeFlash}
           onClick={() => {
             if (activeFlash) {
               toast.error(
@@ -386,6 +419,7 @@ const toggleSelect = (id) => {
               </TableRow>
             ) : (
               filteredSales.map((sale, idx) => {
+               
                
                 const isActive = sale?.isActive;
                 return (
@@ -476,7 +510,7 @@ const toggleSelect = (id) => {
                                   <TableHead className="border px-2 py-1">
                                     Product name
                                   </TableHead>
-                               
+
                                   <TableHead className="border px-2 py-1">
                                     Variant
                                   </TableHead>
@@ -486,7 +520,6 @@ const toggleSelect = (id) => {
                                   <TableHead className="border px-2 py-1">
                                     Price
                                   </TableHead>
-                                  
                                 </TableRow>
                               </TableHeader>
 
@@ -497,113 +530,108 @@ const toggleSelect = (id) => {
                                     product.productName || "Untitled";
                                   const type = product.type || "simple";
                                   const variants = Array.isArray(
-                                    product.variant
+                                    product.variants
                                   )
-                                    ? product.variant
+                                    ? product.variants
                                     : [];
-                                
 
-                                  // Helper for formatted price
-                                 
-
-                                  // Simple product
+                                  // 🧩 Simple Product
                                   if (type === "simple") {
-                                   
-
                                     return (
-                                      <TableRow key={i}>
-                                        <TableCell className="border px-2 py-1">
+                                      <TableRow
+                                        key={i}
+                                        className="border-b border-gray-200 hover:bg-gray-50 transition"
+                                      >
+                                        <TableCell className="px-2 py-1 text-sm font-medium text-gray-700">
                                           {productName}
                                         </TableCell>
-
-                                        <TableCell className="border px-2 py-1">
+                                        <TableCell className="px-2 py-1 text-sm text-gray-600">
                                           -
                                         </TableCell>
-                                        <TableCell className="border px-2 py-1">
+                                        <TableCell className="px-2 py-1 text-sm text-gray-600">
                                           {product.sku || "-"}
                                         </TableCell>
-                                        <TableCell className="border px-2 py-1">
+                                        <TableCell className="px-2 py-1 text-sm">
                                           {product?.discount > 0 ? (
-                                            <span className="text-gray-400 line-through mr-1">
-                                              {product.price}
-                                            </span>
-                                          ) : null}
-                                          <span className="text-orange-600 font-medium">
-                                            {product?.discount > 0
-                                              ? product?.discount
-                                              : product.price}
-                                          </span>
+                                            <>
+                                              <span className="text-gray-400 line-through mr-1">
+                                                {product.price} ৳
+                                              </span>
+                                              <span className="text-orange-600 font-medium">
+                                                {product.discount} ৳
+                                              </span>
+                                            </>
+                                          ) : (
+                                            <span>{product.price} ৳</span>
+                                          )}
                                         </TableCell>
                                       </TableRow>
                                     );
                                   }
 
-                                  // Variant product
+                                  // 🧩 Variant Product
                                   return (
                                     <React.Fragment key={i}>
                                       {variants.length > 0 ? (
                                         variants.map((v, idx) => {
-                                          
+                                          const attrText = Object.entries(
+                                            v.attributes || {}
+                                          )
+                                            .map(
+                                              ([key, val]) => `${key}: ${val}`
+                                            )
+                                            .join(", ");
+
                                           return (
-                                            <TableRow key={idx}>
-                                              <TableCell className="border px-2 py-1">
-                                                {idx === 0 ? (
-                                                  <span className="font-medium">
-                                                    {productName}
-                                                  </span>
-                                                ) : (
-                                                  ""
-                                                )}
+                                            <TableRow
+                                              key={idx}
+                                              className="border-b border-gray-200 hover:bg-gray-50 transition"
+                                            >
+                                              <TableCell className="px-2 py-1 text-sm font-medium text-gray-700">
+                                                {idx === 0 ? productName : ""}
                                               </TableCell>
-                                             
-                                              <TableCell className="border px-2 py-1">
-                                                {v.variant || "-"}
+
+                                              <TableCell className="px-2 py-1 text-sm text-gray-600">
+                                                {attrText || "-"}
                                               </TableCell>
-                                              <TableCell className="border px-2 py-1">
+
+                                              <TableCell className="px-2 py-1 text-sm text-gray-600">
                                                 {v.sku || "-"}
                                               </TableCell>
-                                              <TableCell className="border px-2 py-1">
-                                                {v.discount > 0 ||
-                                                discount > 0 ? (
+
+                                              <TableCell className="px-2 py-1 text-sm">
+                                                {v.discount > 0 ? (
                                                   <>
                                                     <span className="text-gray-400 line-through mr-1">
-                                                      {v.price}
+                                                      {v.price} ৳
                                                     </span>
                                                     <span className="text-orange-600 font-medium">
-                                                      {
-                                                        v.discount 
-                                                      }
+                                                      {v.discount} ৳
                                                     </span>
                                                   </>
                                                 ) : (
-                                                  <span>
-                                                    {v.price}
-                                                  </span>
+                                                  <span>{v.price} ৳</span>
                                                 )}
                                               </TableCell>
-
-                                              {/* <TableCell className="border px-2 py-1">
-                                                {sale?.discount || 0}
-                                              </TableCell> */}
                                             </TableRow>
                                           );
                                         })
                                       ) : (
                                         <TableRow>
-                                          <TableCell className="border px-2 py-1">
+                                          <TableCell className="px-2 py-1 text-sm font-medium text-gray-700">
                                             {productName}
                                           </TableCell>
-                                          <TableCell className="border px-2 py-1 capitalize">
+                                          <TableCell className="px-2 py-1 text-sm text-gray-600 capitalize">
                                             Variant
                                           </TableCell>
-                                          <TableCell className="border px-2 py-1">
+                                          <TableCell className="px-2 py-1 text-sm text-gray-600">
                                             No variants
                                           </TableCell>
-                                          <TableCell className="border px-2 py-1">
+                                          <TableCell className="px-2 py-1 text-sm text-gray-600">
                                             -
                                           </TableCell>
-                                          <TableCell className="border px-2 py-1">
-                                            {product.price}
+                                          <TableCell className="px-2 py-1 text-sm text-gray-600">
+                                            {product.price} ৳
                                           </TableCell>
                                         </TableRow>
                                       )}
@@ -636,17 +664,20 @@ const toggleSelect = (id) => {
           <form onSubmit={handleSubmit}>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-4">
               <div>
-                <Label>Title</Label>
+                <Label className="mb-2">Flash Title</Label>
                 <Input
-                  placeholder="Enter Flash Sale Title"
+                  placeholder="Enter Flash Sale Title "
+                  
+                  className='border border-gray-300 rounded-none px-3 py-2 uppercase focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent'
                   value={form.title}
                   onChange={(e) => setForm({ ...form, title: e.target.value })}
                 />
               </div>
               <div>
-                <Label>End Time</Label>
+                <Label className='mb-2'>End Time</Label>
                 <Input
                   type="datetime-local"
+                  className='border border-gray-300 rounded-none px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent'
                   value={form.endTime}
                   onChange={(e) =>
                     setForm({ ...form, endTime: e.target.value })
@@ -683,6 +714,7 @@ const toggleSelect = (id) => {
                 placeholder="Search products..."
                 value={productSearch}
                 onChange={(e) => setProductSearch(e.target.value)}
+                className="mb-3 border border-gray-300 rounded-none"
               />
 
               <div className="overflow-x-auto max-h-52 border border-gray-300 mt-5 rounded-md">
@@ -765,27 +797,36 @@ const toggleSelect = (id) => {
                                     </TableRow>
                                   </TableHeader>
                                   <TableBody>
-                                    {(p.variant || []).map((v, i) => (
+                                    {(p.variants || []).map((v, i) => (
                                       <TableRow
                                         key={i}
-                                        className="border-b border-gray-200"
+                                        className="border-b border-gray-200 hover:bg-gray-50 transition"
                                       >
-                                        <TableCell className="text-xs px-2 py-1">
-                                          {v.variant ||
-                                            v.name ||
-                                            JSON.stringify(v)}
+                                        <TableCell className="text-xs px-2 py-1 font-medium text-gray-700 border">
+                                          {Object.entries(
+                                            v.attributes || {}
+                                          ).map(([key, value]) => (
+                                            <div key={key}>
+                                              <span className="text-gray-500 text-xs">
+                                                {key}:
+                                              </span>{" "}
+                                              {value}
+                                            </div>
+                                          ))}
                                         </TableCell>
-                                        <TableCell className="text-xs px-2 py-1">
-                                          {v.price}
+                                        <TableCell className="text-xs px-2 py-1 text-gray-700 border">
+                                          {v.price ? `${v.price} ৳` : "-"}
                                         </TableCell>
-                                        <TableCell className="text-xs px-2 py-1">
-                                          {v.discount ?? "-"}
+                                        <TableCell className="text-xs px-2 py-1 text-gray-700 border">
+                                          {v.discount ? `${v.discount} ৳` : "-"}
                                         </TableCell>
-                                        <TableCell className="text-xs px-2 py-1">
+                                        <TableCell className="text-xs px-2 py-1 text-gray-700 border">
                                           {v.sku || "-"}
                                         </TableCell>
                                       </TableRow>
                                     ))}
+
+                                    {/* <pre>{JSON?.stringify(p.variants)}</pre> */}
                                   </TableBody>
                                 </Table>
                               ) : (
@@ -793,7 +834,9 @@ const toggleSelect = (id) => {
                                   {p.discount ? (
                                     <>
                                       <span>Discount Price: {p.discount}</span>{" "}
-                                      <span className="line-through text-red-500">Price: {p.price}</span>
+                                      <span className="line-through text-red-500">
+                                        Price: {p.price}
+                                      </span>
                                     </>
                                   ) : (
                                     <span>Price: {p.price}</span>
