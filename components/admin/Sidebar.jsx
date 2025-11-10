@@ -14,6 +14,7 @@ import {
   FolderPlus,
   Layers,
   Flag,
+  Settings2,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -28,7 +29,7 @@ export default function Sidebar({ onNavigate }) {
       items: [
         { name: "Dashboard", href: "/dashboard", icon: Home },
         {
-          name: "Orders Manage",
+          name: "Orders",
           href: "/dashboard/orders",
           icon: ShoppingCart,
         },
@@ -63,6 +64,7 @@ export default function Sidebar({ onNavigate }) {
         { name: "Banner Mange", href: "/dashboard/banner", icon: Flag },
         { name: "Advertisement", href: "/dashboard/advertisement", icon: Layers },
         { name: "Landing Page", href: "/dashboard/landing-page-list", icon: Tags },
+        { name: "Marketing Config", href: "/dashboard/marketing", icon: Settings2 },
       ],
     },
     {
