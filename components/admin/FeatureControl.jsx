@@ -27,7 +27,7 @@ export default function FeatureControlDialog({ product }) {
     try {
       setLoading(true);
 
-      const res = await axios.post("/api/featured-section", {
+      const res = await axios.post(`${process.env.NEXT_PUBLIC_BASE_URL}/api/featured-section`, {
         productId: product._id,
         featured: isFeatured,
         featuredPosition: Number(position) || null,

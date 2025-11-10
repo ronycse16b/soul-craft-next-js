@@ -10,7 +10,7 @@ export default function BestSellingProducts() {
   const { data, isLoading } = useQuery({
     queryKey: ["bestSelling"], // query key
     queryFn: async () => {
-      const res = await fetch("/api/best-selling-products");
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/best-selling-products`);
       return res.json();
     },
     staleTime: 1000 * 60 * 5, // 5 minutes

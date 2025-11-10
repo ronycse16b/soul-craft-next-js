@@ -37,7 +37,7 @@ export default function MobileBottomBar() {
   } = useQuery({
     queryKey: ["categories"],
     queryFn: async () => {
-      const res = await axios.get("/api/categories/client");
+      const res = await axios.get(`${process.env.NEXT_PUBLIC_BASE_URL}/api/categories/client`);
       return res.data?.result || [];
     },
     staleTime: 1000 * 60 * 5, // 5 mins cache before re-fetch

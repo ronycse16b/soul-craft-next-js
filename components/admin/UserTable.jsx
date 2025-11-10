@@ -18,7 +18,10 @@ export default function UserTable({
 
   const deleteUser = useMutation({
     mutationFn: async (id) => {
-      const res = await fetch(`/api/user/${id}`, { method: "DELETE" });
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/user/${id}`,
+        { method: "DELETE" }
+      );
       const data = await res.json();
       if (!data.success) throw new Error(data.message || "Failed to delete");
       return data;

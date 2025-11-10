@@ -45,11 +45,14 @@ export default function UserEditModal({
 
   const updateUser = useMutation({
     mutationFn: async (data) => {
-      const res = await fetch(`/api/user/${user._id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/user/${user._id}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        }
+      );
       const result = await res.json();
       if (!result.success)
         throw new Error(result.message || "Failed to update");

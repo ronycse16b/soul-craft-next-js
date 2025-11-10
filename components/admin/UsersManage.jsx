@@ -16,7 +16,9 @@ export default function UsersPage() {
   const { data, isLoading, isFetching, refetch } = useQuery({
     queryKey: ["users", { page, search }],
     queryFn: async () => {
-      const res = await fetch(`/api/user?page=${page}&search=${search}`);
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/user?page=${page}&search=${search}`
+      );
       const data = await res.json();
       if (!data.success) throw new Error(data.message || "Failed to fetch");
       return data;
@@ -121,7 +123,7 @@ function CreateUserModal({ onClose, refetch }) {
     }
     setLoading(true);
     try {
-      const res = await fetch("/api/user", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/user`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),

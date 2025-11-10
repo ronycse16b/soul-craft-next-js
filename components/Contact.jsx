@@ -12,7 +12,7 @@ import Container from "./Container";
 
 // API function
 const sendMessage = async (formData) => {
-  const { data } = await axios.post("/api/messages", formData);
+  const { data } = await axios.post(`${process.env.NEXT_PUBLIC_BASE_URL}/api/messages`, formData);
   return data;
 };
 

@@ -11,7 +11,7 @@ export default function MarketingManager() {
     let mounted = true;
     (async () => {
       try {
-        const res = await fetch("/api/marketing-config");
+        const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/marketing-config`);
         if (!res.ok) throw new Error("No marketing config");
         const json = await res.json();
         const d = json?.data || {};

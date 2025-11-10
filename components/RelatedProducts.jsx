@@ -7,7 +7,7 @@ import ProductCard from "./ProductCard";
 export default function RelatedProducts({ categoryId, excludeId }) {
   const fetchRelated = async () => {
     const res = await axios.get(
-      `/api/products/related?category=${categoryId}&exclude=${excludeId}`
+      `${process.env.NEXT_PUBLIC_BASE_URL}/api/products/related?category=${categoryId}&exclude=${excludeId}`
     );
     return res.data.data;
   };

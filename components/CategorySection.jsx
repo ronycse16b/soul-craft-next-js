@@ -25,7 +25,7 @@ export default function CategorySection() {
   const { data: categories = [], isLoading } = useQuery({
     queryKey: ["categories"],
     queryFn: async () => {
-      const res = await axios.get("/api/categories/client"); // Your API
+      const res = await axios.get(`${process.env.NEXT_PUBLIC_BASE_URL}/api/categories/client`); // Your API
       return res.data.result || [];
 
     },

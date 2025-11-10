@@ -16,12 +16,12 @@ export default function AdminMessages() {
 
   const { data: messages = [], isLoading } = useQuery({
     queryKey: ["messages"],
-    queryFn: async () => (await axios.get("/api/messages/admin")).data,
+    queryFn: async () => (await axios.get(`${process.env.NEXT_PUBLIC_BASE_URL}/api/messages/admin`)).data,
   });
 
   const replyMutation = useMutation({
     mutationFn: async ({ messageId, reply }) =>
-      await axios.post("/api/messages/admin", { messageId, reply }),
+      await axios.post(`${process.env.NEXT_PUBLIC_BASE_URL}/api/messages/admin`, { messageId, reply }),
     onSuccess: () => {
       toast.success("Reply sent!");
       setReplyText("");

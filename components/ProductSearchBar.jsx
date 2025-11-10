@@ -24,7 +24,9 @@ export default function ProductSearchBar() {
     queryKey: ["searchProducts", debouncedQuery],
     queryFn: async () => {
       if (!debouncedQuery) return [];
-      const res = await axios.get(`/api/products/search?q=${debouncedQuery}`);
+      const res = await axios.get(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/products/search?q=${debouncedQuery}`
+      );
      
       return res.data?.data || [];
     },

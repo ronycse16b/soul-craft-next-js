@@ -19,7 +19,10 @@ export default function AdvertisementTable({
 
   const toggleMutation = useMutation({
     mutationFn: async ({ id, isActive }) => {
-      await axios.put(`/api/advertisement/${id}`, { isActive });
+      await axios.put(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/advertisement/${id}`,
+        { isActive }
+      );
     },
     onSuccess: () => {
       toast.success("Status updated!");
@@ -84,7 +87,9 @@ export default function AdvertisementTable({
         selected={selected}
         onClose={() => setSelected(null)}
         onConfirm={async () => {
-          await axios.delete(`/api/advertisement/${selected._id}`);
+          await axios.delete(
+            `${process.env.NEXT_PUBLIC_BASE_URL}/api/advertisement/${selected._id}`
+          );
           toast.success("Advertisement deleted!");
           setSelected(null);
           onRefresh();

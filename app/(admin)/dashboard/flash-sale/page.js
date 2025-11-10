@@ -65,14 +65,14 @@ export default function FlashSaleManager() {
   // ==================== FETCH FLASH SALES ====================
   const { data: flashSales = {}, isLoading: flashLoading } = useQuery({
     queryKey: ["flashSales"],
-    queryFn: async () => (await axios.get("/api/flash-sale")).data,
+    queryFn: async () => (await axios.get(`${process.env.NEXT_PUBLIC_BASE_URL}/api/flash-sale`)).data,
   });
 
   // ==================== FETCH PRODUCTS (with search) ====================
   const { data: products = [], isLoading: productsLoading } = useQuery({
     queryKey: ["products", productSearch],
     queryFn: async () => {
-      const res = await axios.get("/api/all-products", {
+      const res = await axios.get(`${process.env.NEXT_PUBLIC_BASE_URL}/api/all-products`, {
         params: { search: productSearch, limit: 100 },
       });
       // make sure we return an array
@@ -85,8 +85,11 @@ export default function FlashSaleManager() {
   const mutation = useMutation({
     mutationFn: async (data) =>
       editId
-        ? axios.put(`/api/flash-sale/${editId}`, { id: editId, ...data })
-        : axios.post("/api/flash-sale", data),
+        ? axios.put(
+            `${process.env.NEXT_PUBLIC_BASE_URL}/api/flash-sale/${editId}`,
+            { id: editId, ...data }
+          )
+        : axios.post(`${process.env.NEXT_PUBLIC_BASE_URL}/api/flash-sale`, data),
     onSuccess: () => {
       toast.success(editId ? "Flash Sale Updated!" : "Flash Sale Added!");
       queryClient.invalidateQueries(["flashSales"]);
@@ -100,7 +103,10 @@ export default function FlashSaleManager() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (id) => axios.delete(`/api/flash-sale?id=${id}`),
+    mutationFn: async (id) =>
+      axios.delete(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/flash-sale?id=${id}`
+      ),
     onSuccess: () => {
       toast.success("Deleted successfully!");
       queryClient.invalidateQueries(["flashSales"]);
@@ -111,7 +117,10 @@ export default function FlashSaleManager() {
   const toggleActiveMutation = useMutation({
     mutationFn: async ({ id, active }) =>
       // backend: toggle active or update endTime accordingly
-      axios.post(`/api/flash-sale/toggle-active`, { id, active }),
+      axios.post(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/flash-sale/toggle-active`,
+        { id, active }
+      ),
     onSuccess: () => {
       toast.success("Status updated");
       queryClient.invalidateQueries(["flashSales"]);

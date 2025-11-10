@@ -11,7 +11,7 @@ export default function NewArrivals() {
   const { data, isLoading } = useQuery({
     queryKey: ["featuredSection"],
     queryFn: async () => {
-      const res = await axios.get("/api/featured-section");
+      const res = await axios.get(`${process.env.NEXT_PUBLIC_BASE_URL}/api/featured-section`);
       return res.data.products || [];
     },
   });

@@ -16,7 +16,7 @@ export default function ExploreProducts() {
   const { data: categoriesData, isLoading: catLoading } = useQuery({
     queryKey: ["categories"],
     queryFn: async () => {
-      const res = await fetch("/api/all-products");
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/all-products`);
       if (!res.ok) throw new Error("Failed to fetch categories");
       const json = await res.json();
       return json.categories || [];
@@ -26,7 +26,7 @@ export default function ExploreProducts() {
   const { data: productsData, isLoading: prodLoading } = useQuery({
     queryKey: ["products", activeTab],
     queryFn: async () => {
-      const url = new URL("/api/all-products", window.location.origin);
+      const url = new URL(`${process.env.NEXT_PUBLIC_BASE_URL}/api/all-products`, window.location.origin);
       if (activeTab !== "all") url.searchParams.set("slug", activeTab);
       url.searchParams.set("limit", limit.toString());
 

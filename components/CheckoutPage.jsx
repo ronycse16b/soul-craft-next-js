@@ -45,7 +45,9 @@ const CheckoutPage = () => {
   const { data: savedAddresses } = useQuery({
     queryKey: ["userAddresses", session?.user?.id],
     queryFn: async () => {
-      const res = await axios.get(`/api/user/address`);
+      const res = await axios.get(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/user/address`
+      );
       return res.data?.addresses || [];
     },
     enabled: !!session?.user?.id, // only fetch if user is logged in
@@ -136,7 +138,7 @@ const CheckoutPage = () => {
       }));
 
       const responses = await toast.promise(
-        Promise.all(orderPayloads.map((p) => axios.post("/api/order", p))),
+        Promise.all(orderPayloads.map((p) => axios.post(`${process.env.NEXT_PUBLIC_BASE_URL}/api/order`, p))),
         {
           loading: "Submitting your order...",
           success: "Order submitted successfully!",

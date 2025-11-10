@@ -12,13 +12,15 @@ import { useForm } from "react-hook-form";
 const fetchOrders = async ({ queryKey }) => {
   const [_key, { status, page, limit }] = queryKey;
   const res = await axios.get(
-    `/api/order/user?status=${status}&page=${page}&limit=${limit}`
+    `${process.env.NEXT_PUBLIC_BASE_URL}/api/order/user?status=${status}&page=${page}&limit=${limit}`
   );
   return res.data;
 };
 
 const fetchAddresses = async () => {
-  const res = await axios.get(`/api/user/address`);
+  const res = await axios.get(
+    `${process.env.NEXT_PUBLIC_BASE_URL}/api/user/address`
+  );
   return res.data;
 };
 
@@ -75,7 +77,10 @@ const AccountPage = () => {
         setPassword: user?.isGoogle && !user?.hasPassword,
       };
 
-      const res = await axios.put(`/api/auth/profile/${user.id}`, payload);
+      const res = await axios.put(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/auth/profile/${user.id}`,
+        payload
+      );
       if (res.data.success) {
         toast.success("Profile updated successfully!");
         signOut({ callbackUrl: "/auth/sign-in" });
@@ -109,7 +114,10 @@ const AccountPage = () => {
 
   const addAddressMutation = useMutation({
     mutationFn: async (data) => {
-      const res = await axios.post(`/api/user/address`, data);
+      const res = await axios.post(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/user/address`,
+        data
+      );
       return res.data;
     },
     onSuccess: () => {
@@ -121,7 +129,10 @@ const AccountPage = () => {
 
   const updateAddressMutation = useMutation({
     mutationFn: async ({ id, data }) => {
-      const res = await axios.put(`/api/user/address`, { id, ...data });
+      const res = await axios.put(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/user/address`,
+        { id, ...data }
+      );
       return res.data;
     },
     onSuccess: () => {
@@ -133,7 +144,9 @@ const AccountPage = () => {
 
   const deleteAddressMutation = useMutation({
     mutationFn: async (id) => {
-      const res = await axios.delete(`/api/user/address?id=${id}`);
+      const res = await axios.delete(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/user/address?id=${id}`
+      );
       return res.data;
     },
     onSuccess: () => {
@@ -145,10 +158,13 @@ const AccountPage = () => {
 
   const setDefaultMutation = useMutation({
     mutationFn: async (id) => {
-      const res = await axios.put(`/api/user/address`, {
-        id,
-        setDefault: true,
-      });
+      const res = await axios.put(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/user/address`,
+        {
+          id,
+          setDefault: true,
+        }
+      );
       return res.data;
     },
     onSuccess: () => {

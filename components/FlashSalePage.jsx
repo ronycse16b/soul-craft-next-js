@@ -21,7 +21,7 @@ export default function FlashSalePage() {
   const { data: flashSales = [], isLoading } = useQuery({
     queryKey: ["flashSales"],
     queryFn: async () => {
-      const res = await axios.get("/api/flash-sale");
+      const res = await axios.get(`${process.env.NEXT_PUBLIC_BASE_URL}/api/flash-sale`);
       return res.data.flashSales || [];
     },
   });

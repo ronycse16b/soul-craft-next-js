@@ -16,7 +16,7 @@ export default function AdvertisementPage() {
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["advertisement-admin"],
     queryFn: async () => {
-      const res = await axios.get("/api/advertisement");
+      const res = await axios.get(`${process.env.NEXT_PUBLIC_BASE_URL}/api/advertisement`);
       return res.data;
     },
   });

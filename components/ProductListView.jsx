@@ -25,7 +25,9 @@ export default function ProductListView({ slug }) {
         .map(([key, vals]) => `${key}:${vals.join(",")}`)
         .join("|");
 
-      const url = `/api/products-by-category?slug=${slug}&page=${page}&pageSize=${pageSize}&sort=${sortBy}${
+      const url = `${
+        process.env.NEXT_PUBLIC_BASE_URL
+      }/api/products-by-category?slug=${slug}&page=${page}&pageSize=${pageSize}&sort=${sortBy}${
         selectedSub ? `&subCategoriesId=${selectedSub}` : ""
       }${filtersQuery ? `&filters=${filtersQuery}` : ""}`;
 

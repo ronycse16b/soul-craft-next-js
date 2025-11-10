@@ -159,10 +159,13 @@ export default function AdvertisementForm({
 
     try {
       if (editData) {
-        await axios.put(`/api/advertisement/${editData._id}`, payload);
+        await axios.put(
+          `${process.env.NEXT_PUBLIC_BASE_URL}/api/advertisement/${editData._id}`,
+          payload
+        );
         toast.success("Advertisement updated!");
       } else {
-        await axios.post("/api/advertisement", payload);
+        await axios.post(`${process.env.NEXT_PUBLIC_BASE_URL}/api/advertisement`, payload);
         toast.success("Advertisement created!");
       }
 

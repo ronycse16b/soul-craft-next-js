@@ -15,7 +15,7 @@ export default function MarketingSettings() {
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch("/api/marketing-config");
+        const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/marketing-config`);
         const json = await res.json();
         const d = json.data || {};
         setForm({
@@ -39,7 +39,7 @@ export default function MarketingSettings() {
 
     setLoading(true);
     try {
-      const res = await fetch("/api/marketing-config", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/marketing-config`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
