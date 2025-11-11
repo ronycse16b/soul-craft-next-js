@@ -5,7 +5,6 @@ import { NextResponse } from "next/server";
 import SubCategory from "@/models/SubCategory";
 import productModel from "@/models/product.model";
 
-import { adminOnlyMiddleware } from "@/lib/authMiddleware";
 import { connectDB } from "@/lib/db.config";
 import { verifyAccess } from "@/lib/roleMiddleware";
 
@@ -108,8 +107,11 @@ export async function GET(req) {
 
 
 export async function PUT(req) {
-  const auth = await adminOnlyMiddleware(req);
-  if (auth) return auth; // unauthorized
+ const auth = await verifyAccess(req, {
+       roles: ["admin", "moderator"],
+       permission: "create",
+     });
+     if (auth instanceof Response) return auth;
 
   const { name, selectedCategoryId } = await req.json();
   const id = req.url.split("/").pop();
@@ -149,8 +151,11 @@ export async function PUT(req) {
 
 
 export async function POST_delete(req) {
-  const auth = await adminOnlyMiddleware(req);
-  if (auth) return auth; // unauthorized
+ const auth = await verifyAccess(req, {
+       roles: ["admin", "moderator"],
+       permission: "create",
+     });
+     if (auth instanceof Response) return auth;
   try {
     const { subId, fallbackId } = await req.json();
 

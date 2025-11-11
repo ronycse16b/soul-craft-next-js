@@ -1,5 +1,4 @@
 
-import { adminOnlyMiddleware } from "@/lib/authMiddleware";
 import { connectDB } from "@/lib/db.config";
 import { verifyAccess } from "@/lib/roleMiddleware";
 import bannerModel from "@/models/banner.model";
@@ -91,8 +90,11 @@ export async function POST(req) {
 // DELETE: Remove image URL and file by name
 // ========================================
 export async function DELETE(req) {
-  const auth = await adminOnlyMiddleware(req);
-  if (auth) return auth; // unauthorized
+ const auth = await verifyAccess(req, {
+       roles: ["admin", "moderator"],
+       permission: "create",
+     });
+     if (auth instanceof Response) return auth;
 
   try {
     await connectDB();
