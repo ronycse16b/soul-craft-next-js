@@ -2,10 +2,11 @@ import { adminOnlyMiddleware } from "@/lib/authMiddleware";
 import { connectDB } from "@/lib/db.config";
 import { verifyAccess } from "@/lib/roleMiddleware";
 import productModel from "@/models/product.model";
-import fs from 'fs';
+import fs from "fs";
 import { NextResponse } from "next/server";
-import path from 'path';
+import path from "path";
 
+const UPLOADS_DIR = process.env.NEXT_PUBLIC_UPLOADS_DIR;
 
 export async function PUT(req, { params }) {
   const auth = await verifyAccess(req, {
@@ -48,7 +49,6 @@ export async function PUT(req, { params }) {
   }
 }
 
-
 export async function DELETE(req, { params }) {
   const auth = await verifyAccess(req, {
     roles: ["admin", "moderator"],
@@ -74,17 +74,16 @@ export async function DELETE(req, { params }) {
       const matches = [...html.matchAll(/<img[^>]+src="([^">]+)"/g)];
       return matches.map((m) => m[1]);
     };
-  
+
     const deleteImagesFromDescription = (descriptionHtml) => {
       const imagePaths = extractImagePaths(descriptionHtml);
 
       for (const imgPath of imagePaths) {
-
         const relativePath = imgPath.startsWith("/")
           ? imgPath.substring(1) // uploads/1750489502573-description.jpg
           : imgPath;
 
-        const fullPath = path.join(process.cwd(), relativePath);
+        const fullPath = path.join(UPLOADS_DIR, relativePath);
         // equivalent to: project-root/uploads/1750489502573-description.jpg
 
         console.log("Deleting file:", fullPath);
@@ -101,11 +100,9 @@ export async function DELETE(req, { params }) {
         }
       }
     };
-      
-
 
     // Delete description images first
-deleteImagesFromDescription(product.description);
+    deleteImagesFromDescription(product.description);
 
     // Prepare product images (thumbnail + images array)
     const imagePaths = [...(product.images || []), product.thumbnail];
@@ -116,7 +113,7 @@ deleteImagesFromDescription(product.description);
 
       // Use basename in case imgPath is a full URL or has folders
       const fileName = path.basename(imgPath);
-      const filePath = path.join(process.cwd(), "uploads", fileName);
+      const filePath = path.join(UPLOADS_DIR, fileName);
 
       if (fs.existsSync(filePath)) {
         try {

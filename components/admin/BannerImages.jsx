@@ -41,7 +41,7 @@ export default function BannerImages() {
         body: JSON.stringify({ filename }),
       });
 
-      // রিফ্রেশ করে নতুন ব্যানার দেখাতে পারেন
+   
       await fetchData();
     } catch (error) {
       console.log("image deleted fail:", error);

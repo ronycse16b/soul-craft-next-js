@@ -7,6 +7,7 @@ import fs from "fs/promises";
 import { NextResponse } from "next/server";
 import path from "path";
 
+const UPLOADS_DIR = process.env.NEXT_PUBLIC_UPLOADS_DIR;
 // ==========================
 // GET: Get all banner images
 // ==========================
@@ -73,7 +74,7 @@ export async function POST(req) {
       return NextResponse.json(
         {
           success: true,
-          message: "নতুন ব্যানার ডকুমেন্ট তৈরি হয়েছে",
+          message: "Banner has been Successfully Uploaded",
           data: newBanner,
         },
         { status: 201 }
@@ -113,7 +114,7 @@ export async function DELETE(req) {
     );
 
     // Step 2: Delete file from filesystem
-    const filePath = path.join(process.cwd(), "public", "uploads", filename);
+    const filePath = path.join(UPLOADS_DIR, filename);
 
     try {
       await fs.unlink(filePath);

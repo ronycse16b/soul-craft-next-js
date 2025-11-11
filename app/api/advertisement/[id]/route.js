@@ -4,6 +4,7 @@ import fs from "fs/promises";
 import path from "path";
 import { verifyAccess } from "@/lib/roleMiddleware";
 
+const UPLOADS_DIR = process.env.NEXT_PUBLIC_UPLOADS_DIR;
 export async function PUT(req, { params }) {
     const auth = await verifyAccess(req, {
       roles: ["admin", "moderator"],
@@ -42,7 +43,7 @@ export async function DELETE(req, { params }) {
     try {
       // Extract filename only
       const filename = ad.image.split("/").pop();
-      const imagePath = path.join(process.cwd(), "uploads", filename);
+      const imagePath = path.join(UPLOADS_DIR, filename);
       await fs.unlink(imagePath);
     } catch (err) {
       console.warn("Failed to delete image:", err.message);
