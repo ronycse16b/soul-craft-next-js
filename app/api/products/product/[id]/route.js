@@ -6,7 +6,7 @@ import fs from "fs";
 import { NextResponse } from "next/server";
 import path from "path";
 
-const UPLOADS_DIR = process.env.NEXT_PUBLIC_UPLOADS_DIR;
+
 
 export async function PUT(req, { params }) {
   const auth = await verifyAccess(req, {
@@ -83,7 +83,7 @@ export async function DELETE(req, { params }) {
           ? imgPath.substring(1) // uploads/1750489502573-description.jpg
           : imgPath;
 
-        const fullPath = path.join(UPLOADS_DIR, relativePath);
+        const fullPath = path.join(process.cwd(), relativePath);
         // equivalent to: project-root/uploads/1750489502573-description.jpg
 
         console.log("Deleting file:", fullPath);
@@ -113,7 +113,7 @@ export async function DELETE(req, { params }) {
 
       // Use basename in case imgPath is a full URL or has folders
       const fileName = path.basename(imgPath);
-      const filePath = path.join(UPLOADS_DIR, fileName);
+      const filePath = path.join(process.cwd(), "uploads", fileName);
 
       if (fs.existsSync(filePath)) {
         try {

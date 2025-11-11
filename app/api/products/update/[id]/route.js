@@ -6,7 +6,7 @@ import fs from "fs";
 import { NextResponse } from "next/server";
 import path from "path";
 
-const UPLOADS_DIR = process.env.NEXT_PUBLIC_UPLOADS_DIR;
+
 
 export async function PUT(req, { params }) {
  const auth = await verifyAccess(req, {
@@ -42,7 +42,7 @@ export async function PUT(req, { params }) {
       const relativePath = imgPath.startsWith("/")
         ? imgPath.substring(1)
         : imgPath;
-      const fullPath = path.join(UPLOADS_DIR, relativePath);
+      const fullPath = path.join(process.cwd(), relativePath);
 
       if (fs.existsSync(fullPath)) {
         try {

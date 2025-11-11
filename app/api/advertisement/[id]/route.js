@@ -4,7 +4,7 @@ import fs from "fs/promises";
 import path from "path";
 import { verifyAccess } from "@/lib/roleMiddleware";
 
-const UPLOADS_DIR = process.env.NEXT_PUBLIC_UPLOADS_DIR;
+
 export async function PUT(req, { params }) {
     const auth = await verifyAccess(req, {
       roles: ["admin", "moderator"],
@@ -21,12 +21,12 @@ export async function PUT(req, { params }) {
 }
 
 export async function DELETE(req, { params }) {
-    const auth = await verifyAccess(req, {
-      roles: ["admin", "moderator"],
-      permission: "delete",
-    });
-    if (auth instanceof Response) return auth;
-  const {id} = await params;
+  const auth = await verifyAccess(req, {
+    roles: ["admin", "moderator"],
+    permission: "delete",
+  });
+  if (auth instanceof Response) return auth;
+  const { id } = await params;
   await connectDB();
 
   // Find advertisement first
@@ -41,12 +41,19 @@ export async function DELETE(req, { params }) {
   // Delete image from server if exists
   if (ad.image) {
     try {
-      // Extract filename only
       const filename = ad.image.split("/").pop();
-      const imagePath = path.join(UPLOADS_DIR, filename);
+      const imagePath = path.join(process.cwd(), "uploads", filename);
+
+      // Check if file exists before deleting
+      await fs.access(imagePath);
       await fs.unlink(imagePath);
+      console.log("Image deleted:", filename);
     } catch (err) {
-      console.warn("Failed to delete image:", err.message);
+      if (err.code === "ENOENT") {
+        console.warn("Image file does not exist:", err.message);
+      } else {
+        console.warn("Failed to delete image:", err.message);
+      }
     }
   }
 

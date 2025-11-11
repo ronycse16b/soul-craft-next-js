@@ -7,8 +7,6 @@ import fs from "fs/promises";
 import { NextResponse } from "next/server";
 import path from "path";
 
-const UPLOADS_DIR = process.env.NEXT_PUBLIC_UPLOADS_DIR;
-// ==========================
 // GET: Get all banner images
 // ==========================
 export async function GET() {
@@ -93,8 +91,9 @@ export async function POST(req) {
 // DELETE: Remove image URL and file by name
 // ========================================
 export async function DELETE(req) {
-    const auth = await adminOnlyMiddleware(req);
-    if (auth) return auth; // unauthorized
+  const auth = await adminOnlyMiddleware(req);
+  if (auth) return auth; // unauthorized
+
   try {
     await connectDB();
 
@@ -102,7 +101,7 @@ export async function DELETE(req) {
     const { filename } = body;
 
     if (!filename) {
-      return NextResponse.json({ error: "file not found" }, { status: 400 });
+      return NextResponse.json({ error: "File not provided" }, { status: 400 });
     }
 
     const imageUrl = `/uploads/${filename}`;
@@ -114,19 +113,23 @@ export async function DELETE(req) {
     );
 
     // Step 2: Delete file from filesystem
-    const filePath = path.join(UPLOADS_DIR, filename);
+    const filePath = path.join(process.cwd(), "uploads", filename);
 
     try {
       await fs.unlink(filePath);
       console.log("File deleted from server:", filename);
     } catch (fileError) {
-      console.warn("File not found or already deleted:", fileError.message);
+      if (fileError.code === "ENOENT") {
+        console.warn("File not found or already deleted:", filename);
+      } else {
+        console.warn("Failed to delete file:", fileError.message);
+      }
     }
 
     return NextResponse.json(
       {
         success: true,
-        message: "Image Deleted Successful",
+        message: "Image deleted successfully",
         result,
       },
       { status: 200 }
@@ -134,7 +137,7 @@ export async function DELETE(req) {
   } catch (error) {
     console.error("Error deleting image:", error);
     return NextResponse.json(
-      { error: "fail deleting image" },
+      { error: "Failed to delete image" },
       { status: 500 }
     );
   }

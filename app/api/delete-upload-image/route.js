@@ -3,7 +3,7 @@ import path from "path";
 import fs from "fs/promises";
 import { adminOnlyMiddleware } from "@/lib/authMiddleware";
 
-const UPLOADS_DIR = process.env.NEXT_PUBLIC_UPLOADS_DIR;
+ 
 
 export async function POST(req) {
   try {
@@ -17,7 +17,7 @@ export async function POST(req) {
       );
     }
 
-    const filePath = path.join(UPLOADS_DIR, filename);
+    const filePath = path.join(process.cwd(), "uploads", filename);
     await fs.unlink(filePath);
 
     return NextResponse.json({ success: true });

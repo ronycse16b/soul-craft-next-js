@@ -2,8 +2,6 @@ import fs from "fs/promises";
 import path from "path";
 import { NextResponse } from "next/server";
 
-const UPLOADS_DIR = process.env.NEXT_PUBLIC_UPLOADS_DIR;
-
 export async function GET(req, context) {
   try {
     // ✅ context.params is a Promise
@@ -14,7 +12,7 @@ export async function GET(req, context) {
     if (!filePathParts) return new NextResponse("Bad Request", { status: 400 });
     if (typeof filePathParts === "string") filePathParts = [filePathParts];
 
-    const filePath = path.join(UPLOADS_DIR, ...filePathParts);
+    const filePath = path.join(process.cwd(), "uploads", ...filePathParts);
     const fileBuffer = await fs.readFile(filePath);
 
     const ext = path.extname(filePath);
