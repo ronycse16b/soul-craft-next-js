@@ -94,32 +94,19 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
   jwt: { maxAge: 60 * 60 * 12 },
 
   // // ✅ Correct cookie config for prod & dev
-  // cookies: {
-  //   sessionToken: {
-  //     name: "__Secure-authjs.session-token",
-  //     options: {
-  //       httpOnly: true,
-  //       sameSite: "lax",
-  //       path: "/",
-  //       secure: process.env.NEXTAUTH_URL?.startsWith("https"),
-  //     },
-  //   },
-  // },
-
   cookies: {
     sessionToken: {
-      name:
-        process.env.NODE_ENV === "production"
-          ? "__Secure-authjs.session-token"
-          : "authjs.session-token",
+      name: "__Secure-authjs.session-token",
       options: {
         httpOnly: true,
         sameSite: "lax",
         path: "/",
-        secure: process.env.NODE_ENV === "production",
+        secure: process.env.NEXTAUTH_URL?.startsWith("https"),
       },
     },
   },
+
+
 
   callbacks: {
     async jwt({ token, user, account }) {
