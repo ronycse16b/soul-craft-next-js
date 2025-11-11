@@ -61,7 +61,7 @@ export default function RootLayout({ children }) {
 
         {/* Marketing & Tracking Scripts */}
         <MarketingManager />
-        <CookieConsent />
+        {/* <CookieConsent /> */}
 
         {/* Structured Data for SEO */}
         <Script

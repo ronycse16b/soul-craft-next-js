@@ -7,6 +7,7 @@ import Container from "./Container";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import Image from "next/image";
+import Link from "next/link";
 
 export default function CategorySection() {
   const [selected, setSelected] = useState(null);
@@ -70,36 +71,38 @@ export default function CategorySection() {
             
 
               return (
-                <div
-                  key={cat._id || cat.name}
-                  onClick={() => setSelected(cat.name)}
-                  onMouseEnter={() => setHovered(cat?._id || cat?.name)}
-                  onMouseLeave={() => setHovered(null)}
-                  className={`flex flex-col items-center justify-center min-w-[120px] sm:min-w-[150px] h-[150px] rounded-md border cursor-pointer transition-all duration-300 relative bg-gray-50 ${
-                    isSelected
-                      ? "border-destructive shadow-lg"
-                      : "border-gray-200 hover:shadow-sm"
-                  }`}
-                >
-                  {/* Image Container with fade */}
-                  <div className="relative w-20 h-20 mt-4 mb-2">
-                    <Image
-                      src={cat?.image}
-                      alt={cat?.name}
-                      fill
-                      className="absolute object-contain transition-opacity duration-500"
-                    />
-                  </div>
-
-                  {/* Category Name */}
-                  <p
-                    className={`text-sm font-semibold text-center mb-4 ${
-                      isSelected ? "text-destructive" : "text-gray-800"
+                <Link key={cat._id || cat.name} href={`/shop/${cat.slug}`}>
+                  <div
+                    key={cat._id || cat.name}
+                    onClick={() => setSelected(cat.name)}
+                    onMouseEnter={() => setHovered(cat?._id || cat?.name)}
+                    onMouseLeave={() => setHovered(null)}
+                    className={`flex flex-col items-center justify-center min-w-[120px] sm:min-w-[150px] h-[150px] rounded-md border cursor-pointer transition-all duration-300 relative bg-gray-50 ${
+                      isSelected
+                        ? "border-destructive shadow-lg"
+                        : "border-gray-200 hover:shadow-sm"
                     }`}
                   >
-                    {cat.name}
-                  </p>
-                </div>
+                    {/* Image Container with fade */}
+                    <div className="relative w-20 h-20 mt-4 mb-2">
+                      <Image
+                        src={cat?.image}
+                        alt={cat?.name}
+                        fill
+                        className="absolute object-contain transition-opacity duration-500"
+                      />
+                    </div>
+
+                    {/* Category Name */}
+                    <p
+                      className={`text-sm font-semibold text-center mb-4 ${
+                        isSelected ? "text-destructive" : "text-gray-800"
+                      }`}
+                    >
+                      {cat.name}
+                    </p>
+                  </div>
+                </Link>
               );
             })}
           </div>

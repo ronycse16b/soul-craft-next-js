@@ -12,8 +12,6 @@ import {
 import { NextResponse } from "next/server";
 
 export async function GET(req) {
-    const auth = await adminOnlyMiddleware(req);
-    if (auth) return auth; // unauthorized
   await connectDB();
 
   const { searchParams } = new URL(req.url);

@@ -44,47 +44,138 @@ export default function ProductPage({ product }) {
 
   const autoplay = Autoplay({ delay: 3500, stopOnInteraction: false });
 
-   useEffect(() => {
-
-     const isSimple = product.type === "simple";
-     // ✅ Get accurate available stock
-     const availableStock = isSimple
-       ? product.quantity
-       : selectedVariant?.quantity ?? 0;
-     // ✅ Everything ok → prepare payload
-     const payload = {
-       productId: product._id,
-       productName: product.productName,
-       images: product.thumbnail || product.images?.[0],
-       attributes: isSimple ? {} : selectedAttributes,
-       price: isSimple
-         ? discountedPrice || product.price
-         : selectedVariant?.discount ?? selectedVariant?.price,
-       sku: isSimple ? product.sku : selectedVariant?.sku ?? "",
-       quantity,
-       variant: isSimple ? null : selectedVariant,
-       availableStock, // 🟢 send stock info to slice
-     };
-
-   
-     // 🔹 Track product view on mount
-     trackViewContent(payload);
-   }, [product]);
-
-  // helper: normalize attributes object from variant
-  const attrsFromVariant = (variant) =>
-    typeof variant.attributes === "object"
-      ? variant.attributes
-      : Object.fromEntries(variant.attributes);
-
-  // initialize first available variant on mount
   useEffect(() => {
-    if (product.type === "variant" && product.variants?.length > 0) {
+    const isSimple = product.type === "simple";
+    // ✅ Get accurate available stock
+    const availableStock = isSimple
+      ? product.quantity
+      : selectedVariant?.quantity ?? 0;
+    // ✅ Everything ok → prepare payload
+    const payload = {
+      productId: product._id,
+      productName: product.productName,
+      images: product.thumbnail || product.images?.[0],
+      attributes: isSimple ? {} : selectedAttributes,
+      price: isSimple
+        ? discountedPrice || product.price
+        : selectedVariant?.discount ?? selectedVariant?.price,
+      sku: isSimple ? product.sku : selectedVariant?.sku ?? "",
+      quantity,
+      variant: isSimple ? null : selectedVariant,
+      availableStock, // 🟢 send stock info to slice
+    };
+
+    // 🔹 Track product view on mount
+    trackViewContent(payload);
+  }, [product]);
+
+  // Normalize attributes from API so each attribute.values is always array of strings
+  const normalizeAttributes = (attrs = []) =>
+    attrs.map((a) => {
+      const raw = a.values;
+
+      // if values already an array, try to flatten JSON-encoded items and split comma-inside items
+      if (Array.isArray(raw)) {
+        const flattened = raw.flatMap((item) => {
+          if (typeof item !== "string") return [String(item)];
+          // try JSON parse if it's a JSON string like '["Red","Black"]'
+          try {
+            const parsed = JSON.parse(item);
+            if (Array.isArray(parsed)) return parsed.map((p) => String(p));
+          } catch (e) {
+            // not JSON, fall through
+          }
+          // split by comma if present
+          if (item.includes(",")) return item.split(",").map((s) => s.trim());
+          return [item.trim()];
+        });
+        return {
+          ...a,
+          values: Array.from(new Set(flattened.map((s) => s.trim()))).filter(
+            Boolean
+          ),
+        };
+      }
+
+      // if values is a string: try JSON parse first, then comma-split
+      if (typeof raw === "string") {
+        try {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) {
+            return {
+              ...a,
+              values: parsed.map((s) => String(s).trim()).filter(Boolean),
+            };
+          }
+        } catch (e) {}
+        return {
+          ...a,
+          values: raw
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean),
+        };
+      }
+
+      // fallback: return empty array
+      return { ...a, values: [] };
+    });
+
+  // safer attrsFromVariant: return object mapping attribute name -> value
+  const attrsFromVariant = (variant) => {
+    if (!variant) return {};
+    if (!variant.attributes) return {};
+    if (
+      typeof variant.attributes === "object" &&
+      !Array.isArray(variant.attributes)
+    ) {
+      return variant.attributes;
+    }
+    // if it's entries array like [['Size','39'], ['Colors','Black']]
+    if (Array.isArray(variant.attributes)) {
+      try {
+        return Object.fromEntries(variant.attributes);
+      } catch (e) {
+        // fallback: if items are objects {name, value}
+        const obj = {};
+        variant.attributes.forEach((it) => {
+          if (Array.isArray(it) && it.length >= 2) obj[it[0]] = it[1];
+          else if (it && it.name) obj[it.name] = it.value ?? it.values ?? "";
+        });
+        return obj;
+      }
+    }
+    // last resort: try to parse string
+    try {
+      return JSON.parse(variant.attributes);
+    } catch (e) {
+      return {};
+    }
+  };
+
+  // Initialize product attributes once after fetch/receive
+  useEffect(() => {
+    if (!product) return;
+
+    // normalize attributes before using them
+    const normalizedAttrs = normalizeAttributes(product.attributes || []);
+    // create a shallow-cloned product object for local use or set into state
+    const normalizedProduct = { ...product, attributes: normalizedAttrs };
+    // if you keep product in state: setProduct(normalizedProduct) else use local var below
+    // assume you set a local normalized variable for render and logic
+    // find first available variant (same as your existing logic)
+    if (
+      normalizedProduct.type === "variant" &&
+      normalizedProduct.variants?.length > 0
+    ) {
       const firstVariant =
-        product.variants.find((v) => v.quantity > 0) || product.variants[0];
+        normalizedProduct.variants.find((v) => v.quantity > 0) ||
+        normalizedProduct.variants[0];
       setSelectedVariant(firstVariant);
       setSelectedAttributes(attrsFromVariant(firstVariant));
     }
+    // If you store normalized product into state, do it here:
+    // setProduct(normalizedProduct);
   }, [product]);
 
   // NEW handleAttributeSelect - dynamic, no hardcoding
@@ -232,7 +323,7 @@ export default function ProductPage({ product }) {
       variant: isSimple ? null : selectedVariant,
     };
 
-     trackAddToCart(cartItem);
+    trackAddToCart(cartItem);
 
     dispatch(buyNow(cartItem));
 
@@ -240,7 +331,6 @@ export default function ProductPage({ product }) {
       loading: "Processing...",
       success: "Proceeding to checkout",
       error: "Failed to proceed to checkout",
-      
     });
 
     trackInitiateCheckout([cartItem]);
@@ -361,44 +451,40 @@ Could you tell me more about it?`;
               </div>
             )}
           </div>
+          {/* <pre>{JSON?.stringify(product.attributes)}</pre> */}
 
           {/* Attributes */}
-          {product.type === "variant" && product.attributes?.length > 0 && (
-            <div className="space-y-3">
-              {product.attributes.map((attr) => (
-                <div key={attr.name}>
-                  <Label className="font-medium">{attr.name}</Label>
-                  <div className="flex flex-wrap gap-2 mt-1">
-                    {attr.values[0].split(",").map((v, i) => {
-                      const val = v.trim();
-                      const selected = selectedAttributes[attr.name] === val;
-                      const isFirstAttribute =
-                        product.attributes[0].name === attr.name;
-                      const available = isFirstAttribute
-                        ? isAttributeValueInStock(attr.name, val)
-                        : isValueAvailable(attr.name, val);
-                      return (
-                        <Button
-                          key={i}
-                          size="sm"
-                          variant={selected ? "default" : "outline"}
-                          onClick={() => handleAttributeSelect(attr.name, val)}
-                          disabled={!available}
-                          className={`transition-all duration-200 ${
-                            selected ? "scale-105 shadow-lg" : "hover:scale-105"
-                          } ${
-                            !available ? "opacity-50 cursor-not-allowed" : ""
-                          }`}
-                        >
-                          {val}
-                        </Button>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
+          {product?.attributes?.map((attr) => (
+            <div key={attr.name}>
+              <Label className="font-medium">{attr.name}</Label>
+              <div className="flex flex-wrap gap-2 mt-1">
+                {attr?.values?.map((v, i) => {
+                  const val = String(v).trim();
+                  const selected = selectedAttributes[attr.name] === val;
+                  const isFirstAttribute =
+                    product.attributes[0].name === attr.name;
+                  const available = isFirstAttribute
+                    ? isAttributeValueInStock(attr.name, val)
+                    : isValueAvailable(attr.name, val);
+
+                  return (
+                    <Button
+                      key={`${attr.name}-${i}`}
+                      size="sm"
+                      variant={selected ? "default" : "outline"}
+                      onClick={() => handleAttributeSelect(attr.name, val)}
+                      disabled={!available}
+                      className={`transition-all duration-200 ${
+                        selected ? "scale-105 shadow-lg" : "hover:scale-105"
+                      } ${!available ? "opacity-50 cursor-not-allowed" : ""}`}
+                    >
+                      {val}
+                    </Button>
+                  );
+                })}
+              </div>
             </div>
-          )}
+          ))}
 
           {/* Quantity */}
           <div className="flex items-center ">

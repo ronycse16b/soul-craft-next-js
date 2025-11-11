@@ -15,7 +15,7 @@ export async function GET() {
       .populate({
         path: "products.productId",
         select:
-          "productName brand price sku quantity images discount flashSale type variants thumbnail",
+          "productName brand price sku slug quantity images discount flashSale type variants thumbnail",
       })
       .sort({ createdAt: -1 });
 

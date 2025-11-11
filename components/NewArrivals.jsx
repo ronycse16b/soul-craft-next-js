@@ -1,6 +1,5 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import Image from "next/image";
@@ -11,7 +10,9 @@ export default function NewArrivals() {
   const { data, isLoading } = useQuery({
     queryKey: ["featuredSection"],
     queryFn: async () => {
-      const res = await axios.get(`${process.env.NEXT_PUBLIC_BASE_URL}/api/featured-section`);
+      const res = await axios.get(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/featured-section`
+      );
       return res.data.products || [];
     },
   });
@@ -36,87 +37,80 @@ export default function NewArrivals() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-auto md:h-[500px]">
         {/* Left Big Banner */}
         {main && (
-          <div className="relative md:col-span-2 overflow-hidden group  h-[250px] md:h-full">
+          <Link
+            href={`/products/${main.slug}`}
+            className="relative md:col-span-2 overflow-hidden group h-[250px] sm:h-[350px] md:h-full rounded-lg block"
+          >
             <Image
               src={main.thumbnail}
               alt={main.productName}
               fill
-              className="object-contain transition-transform duration-500 group-hover:scale-105"
+              className="object-cover transition-transform duration-500 group-hover:scale-105"
             />
-            <div className="absolute inset-0 bg-black/40" />
-            <div className="absolute bottom-2 left-6 text-white z-10">
-              <h3 className="text-2xl font-semibold mb-1 line-clamp-2">
+            <div className="absolute inset-0 bg-black/40 transition-opacity group-hover:bg-black/50" />
+            <div className="absolute bottom-3 sm:bottom-5 left-4 sm:left-6 text-white z-10">
+              <h3
+                className="font-semibold leading-tight sm:leading-snug md:leading-normal
+              text-sm sm:text-lg md:text-2xl max-w-[90%] line-clamp-2 break-words"
+              >
                 {main.productName}
               </h3>
-              <p className="text-sm mb-3 max-w-xs opacity-90 line-clamp-3">
-                {main.description}
-              </p>
-              <Button
-                asChild
-                className="bg-transparent underline text-destructive hover:bg-[#f69224] hover:text-white"
-              >
-                <Link href={`/products/${main.slug}`}>Shop Now</Link>
-              </Button>
             </div>
-          </div>
+          </Link>
         )}
 
         {/* Right Section */}
-        <div className="flex flex-col gap-6 h-full">
+        <div className="flex flex-col gap-6 h-auto md:h-full">
           {/* Top Right */}
           {topRight && (
-            <div className="relative overflow-hidden group h-[50%] ">
+            <Link
+              href={`/products/${topRight.slug}`}
+              className="relative overflow-hidden group h-[200px] sm:h-[250px] md:h-[50%] rounded-lg block"
+            >
               <Image
                 src={topRight.thumbnail}
                 alt={topRight.productName}
                 fill
-                className="object-contain transition-transform duration-500 group-hover:scale-105"
+                className="object-cover transition-transform duration-500 group-hover:scale-105"
               />
-              <div className="absolute inset-0 bg-black/40" />
-              <div className="absolute bottom-2 left-6 text-white">
-                <h3 className="text-lg font-semibold ">
+              <div className="absolute inset-0 bg-black/40 transition-opacity group-hover:bg-black/50" />
+              <div className="absolute bottom-3 sm:bottom-4 left-4 sm:left-6 text-white">
+                <h3
+                  className="font-semibold leading-tight mb-1
+                text-xs sm:text-base md:text-lg max-w-[90%] line-clamp-2 break-words"
+                >
                   {topRight.productName}
                 </h3>
-               
-                <Button
-                  asChild
-                  className="bg-transparent underline text-destructive hover:bg-[#f69224] hover:text-white"
-                >
-                  <Link href={`/products/${topRight.slug}`}>Shop Now</Link>
-                </Button>
               </div>
-            </div>
+            </Link>
           )}
 
           {/* Bottom 2 Items */}
-          <div className="grid grid-cols-2 gap-2 h-[50%]">
+          <div className="grid grid-cols-2 gap-3 h-[200px] sm:h-[250px] md:h-[50%]">
             {[bottomLeft, bottomRight]?.map(
               (item, i) =>
                 item && (
-                  <div
+                  <Link
                     key={i}
-                    className="relative overflow-hidden group "
+                    href={`/products/${item.slug}`}
+                    className="relative overflow-hidden group rounded-lg block"
                   >
                     <Image
                       src={item.thumbnail}
                       alt={item.productName}
                       fill
-                      className="object-contain transition-transform duration-500 group-hover:scale-105"
+                      className="object-cover transition-transform duration-500 group-hover:scale-105"
                     />
-                    <div className="absolute inset-0 bg-black/40" />
-                    <div className="absolute bottom-2 left-6 text-white">
-                      <h3 className="text-base font-semibold ">
+                    <div className="absolute inset-0 bg-black/40 transition-opacity group-hover:bg-black/50" />
+                    <div className="absolute bottom-3 sm:bottom-4 left-3 sm:left-4 text-white">
+                      <h3
+                        className="font-semibold leading-tight mb-1
+                      text-xs sm:text-sm md:text-base max-w-[90%] line-clamp-2 break-words"
+                      >
                         {item.productName}
                       </h3>
-                     
-                      <Button
-                        asChild
-                        className="bg-transparent underline text-destructive hover:bg-[#f69224] hover:text-white"
-                      >
-                        <Link href={`/products/${item.slug}`}>Shop Now</Link>
-                      </Button>
                     </div>
-                  </div>
+                  </Link>
                 )
             )}
           </div>

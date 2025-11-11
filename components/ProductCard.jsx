@@ -57,7 +57,7 @@ export default function ProductCard({ product }) {
             alt={product.productName}
             width={404}
             height={500}
-            className={`w-full h-40 sm:h-48 md:h-44 lg:h-48 object-contain bg-gray-100 transition-transform duration-500 ${
+            className={`w-full aspect-[4/4] object-cover bg-gray-100 transition-transform duration-500 ${
               hovered ? "scale-105" : "scale-100"
             }`}
           />
