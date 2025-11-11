@@ -5,11 +5,10 @@ import { connectDB } from "./lib/db.config";
 import AddressBookModel from "./models/address.book.model";
 import User from "./models/user.model";
 
-
 export const { auth, handlers, signIn, signOut } = NextAuth({
   secret: process.env.AUTH_SECRET,
-  // debug: true,
   providers: [
+    // ✅ Google OAuth
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
@@ -26,15 +25,14 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
               isGoogle: true,
               hasPassword: false,
               role: "user",
-              image:
-                picture,
+              image: picture,
             },
             $set: { name },
           },
           { new: true, upsert: true }
         );
 
-        // ✅ Check and create AddressBook if not exists
+        // Create AddressBook if not exists
         const existingAddressBook = await AddressBookModel.findOne({
           userId: user._id,
         });
@@ -53,18 +51,18 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         }
 
         return {
-          id: user._id.toString(), // force MongoDB _id here
+          id: user._id.toString(),
           name: user.name,
           emailOrPhone: user.emailOrPhone,
           image: user.image,
           googleId: user.googleId,
-
           role: user.role,
           isGoogle: user.isGoogle,
         };
       },
     }),
 
+    // ✅ Credentials login
     CredentialsProvider({
       name: "Credentials",
       credentials: {
@@ -73,7 +71,6 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
       },
       async authorize(credentials) {
         await connectDB();
-
         const { emailOrPhone, password } = credentials;
         const user = await User.findOne({ emailOrPhone });
         if (!user) throw new Error("User not found");
@@ -86,7 +83,6 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
           name: user.name,
           emailOrPhone: user.emailOrPhone,
           image: user.image,
-          // address: user.address,
           role: user.role,
           isGoogle: user.isGoogle,
         };
@@ -94,44 +90,38 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
     }),
   ],
 
-  session: {
-    strategy: "jwt",
-    maxAge: 60 * 60 * 12,
-  },
+  session: { strategy: "jwt", maxAge: 60 * 60 * 12 },
+  jwt: { maxAge: 60 * 60 * 12 },
 
-  jwt: {
-    maxAge: 60 * 60 * 12,
+  // ✅ Correct cookie config for prod & dev
+  cookies: {
+    sessionToken: {
+      name: "__Secure-next-auth.session-token",
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: process.env.NEXTAUTH_URL?.startsWith("https"),
+      },
+    },
   },
 
   callbacks: {
     async jwt({ token, user, account }) {
-      if (user) {
-        token.id = user.id;
-      }
-      if (!token.id && token.sub) token.id = token.sub;
-
-      // Ensure MongoDB _id for Google
+      if (user) token.id = user.id || token.sub;
       if (account?.provider === "google" && user) {
         const foundUser = await User.findOne({ googleId: user.googleId });
         if (foundUser) {
           token.id = foundUser._id.toString();
           token.sub = foundUser._id.toString();
-          token.hasPassword = foundUser.hasPassword || false; // add this
+          token.hasPassword = foundUser.hasPassword || false;
         }
       }
-
-      // Normal user
-      if (user && !account) {
-        token.hasPassword = user.hasPassword || false;
-      }
-
       token.role = user?.role || token.role;
       token.isGoogle = user?.isGoogle ?? token.isGoogle;
       token.image = user?.image || token.image || null;
       token.name = user?.name || token.name || null;
       token.emailOrPhone = user?.emailOrPhone || token.emailOrPhone || null;
-      // token.address = user?.address || token.address || null;
-
       return token;
     },
 
@@ -141,15 +131,13 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
       session.user.isGoogle = token.isGoogle;
       session.user.emailOrPhone = token.emailOrPhone;
       session.user.name = token.name;
-      // session.user.address = token.address;
       session.user.image = token.image;
-      session.user.hasPassword = token.hasPassword ?? false; // include here
+      session.user.hasPassword = token.hasPassword ?? false;
       return session;
     },
   },
 
-  pages: {
-    signIn: "/auth/sign-in",
-  },
+  pages: { signIn: "/auth/sign-in" },
   trustHost: true,
+  debug: process.env.NODE_ENV !== "production",
 });
