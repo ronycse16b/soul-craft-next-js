@@ -10,12 +10,12 @@ export async function middleware(req) {
     secret: process.env.AUTH_SECRET,
     cookieName:
       process.env.NODE_ENV === "production"
-        ? "__Secure-next-auth.session-token"
+        ? "__Secure-authjs.session-token"
         : "authjs.session-token",
   });
 
   // ⚙️ Debug log (only in dev mode)
-  if (process.env.NODE_ENV == "production") {
+  if (process.env.NODE_ENV !== "production") {
     console.log("Auth Check:", {
       pathname,
       hasToken: !!token,

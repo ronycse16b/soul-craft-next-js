@@ -96,7 +96,7 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
   // ✅ Correct cookie config for prod & dev
   cookies: {
     sessionToken: {
-      name: "__Secure-next-auth.session-token",
+      name: "__Secure-authjs.session-token",
       options: {
         httpOnly: true,
         sameSite: "lax",
