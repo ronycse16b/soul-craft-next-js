@@ -1,16 +1,29 @@
 "use client";
 
+import dynamic from "next/dynamic";
+
+// Lazy load ProductCard (client-only)
+const ProductCard = dynamic(() => import("./ProductCard"), {
+  ssr: false,
+  loading: () => (
+    <div className="h-[240px] bg-gray-100 animate-pulse rounded-md" />
+  ),
+});
+
 import Link from "next/link";
 import Container from "./Container";
-import ProductCard from "./ProductCard";
+
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
+import { Suspense } from "react";
 
 export default function BestSellingProducts() {
   const { data, isLoading } = useQuery({
     queryKey: ["bestSelling"], // query key
     queryFn: async () => {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/best-selling-products`);
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/best-selling-products`
+      );
       return res.json();
     },
     staleTime: 1000 * 60 * 5, // 5 minutes
@@ -50,7 +63,14 @@ export default function BestSellingProducts() {
 
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-6">
           {products?.slice(0, limit)?.map((product) => (
-            <ProductCard key={product._id} product={product} />
+            <Suspense
+              key={product._id}
+              fallback={
+                <div className="h-[240px] bg-gray-100 animate-pulse rounded-md" />
+              }
+            >
+              <ProductCard product={product} />
+            </Suspense>
           ))}
         </div>
       </Container>

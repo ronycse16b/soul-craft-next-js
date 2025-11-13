@@ -1,5 +1,6 @@
 "use client";
 
+import { clearLocalCache, getFromLocalCache, removeFromCDN, uploadSingle } from "@/lib/uploadHelper";
 import { Edit, ImagePlus, Pencil, Trash } from "lucide-react";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
@@ -11,7 +12,8 @@ export default function Categories() {
   const [modalOpen, setModalOpen] = useState(false);
   const [name, setName] = useState("");
   const [selectedCategoryId, setSelectedCategoryId] = useState("");
-  const [preview, setPreview] = useState(null)
+  const [preview, setPreview] = useState(null);
+  const [uploading, setUploading] = useState(false);
 
   const [editMode, setEditMode] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -27,73 +29,92 @@ export default function Categories() {
     fetchCategoriesWithSubs();
   }, []);
 
-  const handleRemoveImage = async (urlToRemove) => {
-    try {
-      setIsDeleting(true);
-      const filename = urlToRemove.split("/uploads/")[1]; // Extract filename only
-
-      // Call API to delete from server
-    const res =  await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/api/delete-upload-image`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ filename }),
-        }
-      );
-
-      const data = await res.json();
-      if(data?.success){
-        setPreview(null);
-        localStorage.removeItem("uploadedCategoriesImage");
-      }
-      
-      
-    } catch (error) {
-      console.log(error?.message);
-    } finally {
-      setIsDeleting(false);
-    }
-  };
+  // CACHE KEY
 
 
-  const handleImageChange = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+const CACHE_KEY = `update_${view}_image_${editTarget?._id || "new"}`;
 
-    const formData = new FormData();
-    formData.append("images", file);
+useEffect(() => {
+  const cached = getFromLocalCache(CACHE_KEY);
+  console.log("cached", cached);
+  if (cached.length > 0) setPreview(cached[0]);
+}, [CACHE_KEY]);
 
-    try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/upload`, {
-        method: "POST",
-        body: formData,
-      });
-      localStorage.removeItem("uploadedCategoriesImage");
-      const data = await res.json();
-      if (data.success) {
-        const imageUrl = data.imageUrls[0];
-        localStorage.setItem("uploadedCategoriesImage", imageUrl);
-        console.log("Image uploaded:", imageUrl);
-        setPreview(imageUrl);
-      }
-    } catch (error) {
-      console.error("Upload error:", error);
-    }
-  };
-  
-  useEffect(() => {
-    const previewUrl = localStorage.getItem("uploadedCategoriesImage");
-    if (previewUrl) {
-      setPreview(previewUrl);
-    }
-  }, []);
+console.log("preview", preview);
+
+const handleImageChange = async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  try {
+    setUploading(true); // spinner start
+    const url = await uploadSingle(file, CACHE_KEY); // CDN upload + cache
+    setPreview(url);
+  } catch (err) {
+    console.error("Upload failed:", err);
+    toast.error("Upload failed");
+  } finally {
+    setUploading(false); // spinner stop
+  }
+};
+
+const handleRemoveImage = async (url) => {
+  try {
+    setIsDeleting(true); // spinner for remove
+    await removeFromCDN(url, CACHE_KEY); // CDN delete + cache remove
+    setPreview(null);
+  } catch (err) {
+    console.error("Delete failed:", err);
+    toast.error("Delete failed");
+  } finally {
+    setIsDeleting(false);
+  }
+};
+
+const handleSubmit = async () => {
+  if (!name.trim()) return alert("Name is required");
+  if (view === "subcategories" && !selectedCategoryId)
+    return alert("Select parent category");
+
+  const body =
+    view === "categories"
+      ? { name, image: preview }
+      : { name, selectedCategoryId, image: preview };
+
+  try {
+    setLoading(true);
+    const url = editMode
+      ? `${process.env.NEXT_PUBLIC_BASE_URL}/api/${view}/${editTarget._id}`
+      : `${process.env.NEXT_PUBLIC_BASE_URL}/api/${view}`;
+
+    const res = await fetch(url, {
+      method: editMode ? "PUT" : "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    const data = await res.json();
+    if (data.success) {
+      toast.success(data.message);
+      clearLocalCache(CACHE_KEY); // clear cache only after submit
+      resetModal();
+      fetchCategoriesWithSubs();
+    } else setError(data.message || "Operation failed");
+  } catch (err) {
+    console.error(err);
+    setError(err.message);
+  } finally {
+    setLoading(false);
+  }
+};
 
 
   const fetchCategoriesWithSubs = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/categories`);
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/categories`
+      );
       const data = await res.json();
       if (data.success) setCategories(data.result);
     } catch (err) {
@@ -109,57 +130,9 @@ export default function Categories() {
     setEditMode(false);
     setEditTarget(null);
     setModalOpen(false);
-    setPreview(null);
+    // setPreview(null);
     setError(null);
     setFallbackModalOpen(false);
-  };
-
-  const handleSubmit = async () => {
-
-    
-
-    if (!name.trim()) return alert("Name is required");
-    if (view === "subcategories" && !selectedCategoryId)
-      return alert("Select a parent category");
-
-    const url = editMode
-      ? view === "categories"
-        ? `${process.env.NEXT_PUBLIC_BASE_URL}/api/categories/${editTarget._id}`
-        : `${process.env.NEXT_PUBLIC_BASE_URL}/api/sub-categories/${editTarget._id}`
-      : view === "categories"
-      ? "/api/categories"
-      : "/api/sub-categories";
-
-    const method = editMode ? "PUT" : "POST";
-    const body = JSON.stringify(
-      view === "categories"
-        ? { name ,image:preview}
-        : { name, selectedCategoryId ,image:preview}
-    );
-
-    try {
-      setLoading(true);
-      const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body,
-      });
-      const data = await res.json();
-
-      if (data.success) {
-        resetModal();
-        fetchCategoriesWithSubs();
-        toast.success(data.message);
-        localStorage.removeItem("uploadedCategoriesImage");
-      } else {
-        setError(data.message || "Operation failed.");
-      }
-    } catch (err) {
-      console.error(err);
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
   };
 
   const handleToggleActive = async (id, isActive, type) => {
@@ -175,7 +148,6 @@ export default function Categories() {
       });
       const data = await res.json();
       if (data.success) fetchCategoriesWithSubs();
-      
     } catch (err) {
       console.error(err);
       setError(err.message);
@@ -189,18 +161,20 @@ export default function Categories() {
   };
 
   const confirmDeleteSubWithFallback = async () => {
-   
     if (!confirm("Confirm delete?")) return;
     setIsDeleting(true);
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/categories/delete`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          subId: fallbackTargetId,
-          fallbackId,
-        }),
-      });
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/categories/delete`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            subId: fallbackTargetId,
+            fallbackId,
+          }),
+        }
+      );
       const data = await res.json();
       if (data.success) {
         fetchCategoriesWithSubs();
@@ -283,7 +257,6 @@ export default function Categories() {
       </div>
 
       <div className="overflow-x-auto bg-white relative ">
-        {/* Table */}
         {/* Table */}
         {loading ? (
           <div className="animate-pulse">
@@ -431,9 +404,6 @@ export default function Categories() {
       </div>
 
       {/* Add/Edit Modal */}
-      {/* {modalOpen && (
-        
-      )} */}
       <div>
         <div
           className={`fixed z-[100] flex items-center justify-center  ${
@@ -461,56 +431,51 @@ export default function Categories() {
                   placeholder="Enter name"
                 />
                 {preview ? (
-                  <>
-                    {preview && (
-                      <section className="relative">
-                        <div className="relative w-fit mt-2">
-                          <img
-                            src={preview}
-                            alt="Preview"
-                            className="w-16 h-16 object-cover rounded border shadow-md"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveImage(preview)}
-                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-600 transition-all"
-                            title="Remove"
-                            disabled={isDeleting}
-                          >
-                            {isDeleting ? (
-                              <div className="h-4 w-4 border-2 border-orange-400 border-t-transparent rounded-full animate-spin"></div>
-                            ) : (
-                              <Trash className="w-4 h-4" />
-                            )}
-                          </button>
-                        </div>
-                        {editMode && (
-                          <span className="absolute bottom-0 right-0 text-xs animate-pulse mt-2 text-red-600">
-                            If you want to change picture, delete first
-                          </span>
-                        )}
-                      </section>
-                    )}
-                  </>
+                  <div className="relative w-fit mt-2">
+                    <img
+                      src={preview}
+                      alt="Preview"
+                      className="w-16 h-16 object-cover rounded border shadow-md"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveImage(preview)}
+                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-600 transition-all"
+                      disabled={isDeleting}
+                    >
+                      {isDeleting ? (
+                        <div className="h-4 w-4 border-2 border-orange-400 border-t-transparent rounded-full animate-spin"></div>
+                      ) : (
+                        <Trash className="w-4 h-4" />
+                      )}
+                    </button>
+                  </div>
                 ) : (
                   <fieldset className="border border-gray-300 rounded-lg p-4 mt-3 hover:shadow-md transition-all duration-200 bg-white">
                     <label
                       htmlFor="imageUpload"
                       className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-md p-2 cursor-pointer hover:border-[#f69224] transition-all"
                     >
-                      <ImagePlus size={28} className="text-[#f69224] mb-1" />
-                      <span className="text-sm text-gray-700 font-medium">
-                        Click to upload image
-                      </span>
-                      <span className="text-xs text-gray-400 mt-1">
-                        (Max size: 1MB)
-                      </span>
+                      {uploading ? (
+                        <div className="h-6 w-6 border-2 border-orange-400 border-t-transparent rounded-full animate-spin"></div>
+                      ) : (
+                        <>
+                          <ImagePlus
+                            size={28}
+                            className="text-[#f69224] mb-1"
+                          />
+                          <span className="text-sm text-gray-700 font-medium">
+                            Click to upload image
+                          </span>
+                          <span className="text-xs text-gray-400 mt-1">
+                            (Max size: 1MB)
+                          </span>
+                        </>
+                      )}
                     </label>
-
                     <input
                       id="imageUpload"
                       accept="image/*"
-                      required
                       type="file"
                       className="hidden"
                       onChange={handleImageChange}

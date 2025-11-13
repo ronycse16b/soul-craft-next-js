@@ -1,13 +1,21 @@
 "use client";
 
-import React, { useState } from "react";
+import dynamic from "next/dynamic";
+
+// Lazy load ProductCard (client-only)
+const ProductCard = dynamic(() => import("./ProductCard"), {
+  ssr: false,
+  loading: () => (
+    <div className="h-[240px] bg-gray-100 animate-pulse rounded-md" />
+  ),
+});
+
+import React, { Suspense, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
-import ProductCard from "./ProductCard";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { HashLoader } from "react-spinners";
-
 
 export default function ProductListView({ slug }) {
   const [page, setPage] = useState(1);
@@ -59,90 +67,95 @@ export default function ProductListView({ slug }) {
     setPage(1);
   };
 
-const Pagination = () => {
-  const maxVisible = 5; // max buttons to show at once (excluding Prev/Next)
-  const pages = [];
+  const Pagination = () => {
+    const maxVisible = 5; // max buttons to show at once (excluding Prev/Next)
+    const pages = [];
 
-  let start = Math.max(1, page - 2);
-  let end = Math.min(totalPages, start + maxVisible - 1);
+    let start = Math.max(1, page - 2);
+    let end = Math.min(totalPages, start + maxVisible - 1);
 
-  if (end - start < maxVisible - 1) {
-    start = Math.max(1, end - maxVisible + 1);
-  }
+    if (end - start < maxVisible - 1) {
+      start = Math.max(1, end - maxVisible + 1);
+    }
 
-  for (let p = start; p <= end; p++) {
-    pages.push(p);
-  }
+    for (let p = start; p <= end; p++) {
+      pages.push(p);
+    }
 
-  const handlePrev = () => setPage(Math.max(1, page - 1));
-  const handleNext = () => setPage(Math.min(totalPages, page + 1));
+    const handlePrev = () => setPage(Math.max(1, page - 1));
+    const handleNext = () => setPage(Math.min(totalPages, page + 1));
 
-  const handleEllipsisLeft = () => setPage(Math.max(1, start - 1));
-  const handleEllipsisRight = () => setPage(Math.min(totalPages, end + 1));
+    const handleEllipsisLeft = () => setPage(Math.max(1, start - 1));
+    const handleEllipsisRight = () => setPage(Math.min(totalPages, end + 1));
 
-  return (
-    <div className="flex items-center gap-2 flex-wrap">
-      <button onClick={handlePrev} className="px-3 py-1 border rounded text-sm">
-        Prev
-      </button>
-
-      {start > 1 && (
-        <>
-          <button
-            onClick={() => setPage(1)}
-            className="px-3 py-1 border rounded text-sm"
-          >
-            1
-          </button>
-          {start > 2 && (
-            <button
-              onClick={handleEllipsisLeft}
-              className="px-2 py-1 border rounded text-sm"
-            >
-              …
-            </button>
-          )}
-        </>
-      )}
-
-      {pages.map((p) => (
+    return (
+      <div className="flex items-center gap-2 flex-wrap">
         <button
-          key={p}
-          onClick={() => setPage(p)}
-          className={`px-3 py-1 rounded text-sm border ${
-            p === page ? "bg-destructive text-white border-destructive" : ""
-          }`}
+          onClick={handlePrev}
+          className="px-3 py-1 border rounded text-sm"
         >
-          {p}
+          Prev
         </button>
-      ))}
 
-      {end < totalPages && (
-        <>
-          {end < totalPages - 1 && (
+        {start > 1 && (
+          <>
             <button
-              onClick={handleEllipsisRight}
-              className="px-2 py-1 border rounded text-sm"
+              onClick={() => setPage(1)}
+              className="px-3 py-1 border rounded text-sm"
             >
-              …
+              1
             </button>
-          )}
+            {start > 2 && (
+              <button
+                onClick={handleEllipsisLeft}
+                className="px-2 py-1 border rounded text-sm"
+              >
+                …
+              </button>
+            )}
+          </>
+        )}
+
+        {pages.map((p) => (
           <button
-            onClick={() => setPage(totalPages)}
-            className="px-3 py-1 border rounded text-sm"
+            key={p}
+            onClick={() => setPage(p)}
+            className={`px-3 py-1 rounded text-sm border ${
+              p === page ? "bg-destructive text-white border-destructive" : ""
+            }`}
           >
-            {totalPages}
+            {p}
           </button>
-        </>
-      )}
+        ))}
 
-      <button onClick={handleNext} className="px-3 py-1 border rounded text-sm">
-        Next
-      </button>
-    </div>
-  );
-};
+        {end < totalPages && (
+          <>
+            {end < totalPages - 1 && (
+              <button
+                onClick={handleEllipsisRight}
+                className="px-2 py-1 border rounded text-sm"
+              >
+                …
+              </button>
+            )}
+            <button
+              onClick={() => setPage(totalPages)}
+              className="px-3 py-1 border rounded text-sm"
+            >
+              {totalPages}
+            </button>
+          </>
+        )}
 
+        <button
+          onClick={handleNext}
+          className="px-3 py-1 border rounded text-sm"
+        >
+          Next
+        </button>
+      </div>
+    );
+  };
 
   return (
     <div className="py-8">
@@ -258,7 +271,14 @@ const Pagination = () => {
             <>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
                 {products?.map((p) => (
-                  <ProductCard key={p._id} product={p} />
+                  <Suspense
+                    key={p._id}
+                    fallback={
+                      <div className="h-[240px] bg-gray-100 animate-pulse rounded-md" />
+                    }
+                  >
+                    <ProductCard product={p} />
+                  </Suspense>
                 ))}
               </div>
 

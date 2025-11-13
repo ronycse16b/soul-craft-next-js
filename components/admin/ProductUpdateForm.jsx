@@ -11,6 +11,7 @@ import Quill from "quill";
 import ImageResize from "quill-image-resize-module-react";
 import { Button } from "../ui/button";
 import Swal from "sweetalert2";
+import { clearLocalCache, getFromLocalCache, removeFromCDN, uploadMultiple } from "@/lib/uploadHelper";
 
 Quill.register("modules/imageResize", ImageResize);
 
@@ -62,9 +63,7 @@ export default function UpdateProductForm({ product }) {
 
   const [uploadedUrls, setUploadedUrls] = useState(product.images || []);
   const [thumbnailUrl, setThumbnailUrl] = useState(product.thumbnail || null);
-  const [uploadedDescriptionImages, setUploadedDescriptionImages] = useState(
-    []
-  );
+
   const [categories, setCategories] = useState([]);
   const [subcategories, setSubcategories] = useState([]);
   const [selectedParentId, setSelectedParentId] = useState(
@@ -123,41 +122,41 @@ export default function UpdateProductForm({ product }) {
         ["image"],
         ["clean"],
       ],
-      handlers: {
-        image: function () {
-          const input = document.createElement("input");
-          input.setAttribute("type", "file");
-          input.setAttribute("accept", "image/*");
-          input.click();
+      // handlers: {
+      //   image: function () {
+      //     const input = document.createElement("input");
+      //     input.setAttribute("type", "file");
+      //     input.setAttribute("accept", "image/*");
+      //     input.click();
 
-          input.onchange = async () => {
-            const file = input.files[0];
-            if (!file) return;
-            if (file.size > 1 * 1024 * 1024) {
-              alert("File too large. Max 1MB allowed.");
-              return;
-            }
-            const formData = new FormData();
-            formData.append("images", file);
-            try {
-              const res = await fetch(
-                `${process.env.NEXT_PUBLIC_BASE_URL}/api/upload`,
-                { method: "POST", body: formData }
-              );
-              const data = await res.json();
-              if (data.success) {
-                const imageUrl = data.imageUrls[0];
-                const range = this.quill.getSelection();
-                this.quill.insertEmbed(range.index, "image", imageUrl);
-                setUploadedDescriptionImages((prev) => [...prev, imageUrl]);
-              }
-            } catch (err) {
-              console.error(err);
-              alert("Upload failed. Try again.");
-            }
-          };
-        },
-      },
+      //     input.onchange = async () => {
+      //       const file = input.files[0];
+      //       if (!file) return;
+      //       if (file.size > 1 * 1024 * 1024) {
+      //         alert("File too large. Max 1MB allowed.");
+      //         return;
+      //       }
+      //       const formData = new FormData();
+      //       formData.append("images", file);
+      //       try {
+      //         const res = await fetch(
+      //           `${process.env.NEXT_PUBLIC_BASE_URL}/api/upload`,
+      //           { method: "POST", body: formData }
+      //         );
+      //         const data = await res.json();
+      //         if (data.success) {
+      //           const imageUrl = data.imageUrls[0];
+      //           const range = this.quill.getSelection();
+      //           this.quill.insertEmbed(range.index, "image", imageUrl);
+      //           setUploadedDescriptionImages((prev) => [...prev, imageUrl]);
+      //         }
+      //       } catch (err) {
+      //         console.error(err);
+      //         alert("Upload failed. Try again.");
+      //       }
+      //     };
+      //   },
+      // },
     },
     clipboard: { matchVisual: false },
     imageResize: { modules: ["Resize", "DisplaySize", "Toolbar"] },
@@ -177,57 +176,6 @@ export default function UpdateProductForm({ product }) {
       });
     }
   }, [descriptionQuill]);
-
-  const handleImageChange = async (e) => {
-    try {
-      setUploading(true);
-      const files = Array.from(e.target.files);
-      const validFiles = files.filter((file) => file.size <= 1 * 1024 * 1024);
-      if (!validFiles.length) {
-        Swal.fire({ icon: "error", title: "No valid files" });
-        setUploading(false);
-        return;
-      }
-
-      const formData = new FormData();
-      validFiles.forEach((file) => formData.append("images", file));
-
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/api/upload`,
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
-
-      const data = await res.json();
-      if (data.success) setUploadedUrls((prev) => [...prev, ...data.imageUrls]);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const handleRemoveImage = async (urlToRemove) => {
-    try {
-      setIsDeleting(urlToRemove);
-      const filename = urlToRemove.split("/uploads/")[1];
-      await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/api/delete-upload-image`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ filename }),
-        }
-      );
-      setUploadedUrls((prev) => prev.filter((url) => url !== urlToRemove));
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setIsDeleting(null);
-    }
-  };
 
   const generateVariants = () => {
     const attrs = getValues("attributes") || [];
@@ -283,25 +231,87 @@ export default function UpdateProductForm({ product }) {
     reset({ ...getValues(), variants: mergedVariants });
   };
 
-  const onSubmit = async (data) => {
-    setIsSaving(true);
-    const payload = {
-      ...data,
-      images: uploadedUrls,
-      thumbnail: thumbnailUrl,
-      category: selectedParentId,
-      subCategory: selectedSubId,
+  const CACHE_KEY = `update_product_images_${product._id}`;
+  // --- Load DB + Cache Images ---
+  useEffect(() => {
+    const loadImages = () => {
+      const dbImages = product.images || []; // existing product images from DB
+      const cachedImages = getFromLocalCache(CACHE_KEY); // temporary uploads
+      const allImages = [...dbImages, ...cachedImages];
+      setUploadedUrls(allImages);
+      setThumbnailUrl(allImages[0] || null);
     };
 
+    loadImages();
+  }, [product]);
+
+  // --- Handle Image Upload ---
+  const handleImageChange = async (e) => {
     try {
+      setUploading(true);
+      const files = Array.from(e.target.files);
+
+      // Filter out oversized files
+      const validFiles = files.filter((f) => f.size <= 1 * 1024 * 1024);
+      if (!validFiles.length) {
+        Swal.fire({ icon: "error", title: "No valid files or file too large" });
+        return;
+      }
+
+      const uploaded = await uploadMultiple(validFiles, CACHE_KEY);
+
+      setUploadedUrls((prev) => {
+        const combined = [...prev, ...uploaded];
+        return combined;
+      });
+
+      if (!thumbnailUrl && uploaded.length > 0) setThumbnailUrl(uploaded[0]);
+    } catch (err) {
+      Swal.fire({ icon: "error", title: "Upload failed. Try again." });
+      console.error(err);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  // --- Handle Image Remove ---
+  const handleRemoveImage = async (urlToRemove) => {
+    try {
+      setIsDeleting(urlToRemove);
+      await removeFromCDN(urlToRemove, CACHE_KEY);
+
+      setUploadedUrls((prev) => {
+        const updated = prev.filter((u) => u !== urlToRemove);
+        if (thumbnailUrl === urlToRemove) setThumbnailUrl(updated[0] || null);
+        return updated;
+      });
+    } catch (err) {
+      Swal.fire({ icon: "error", title: "Failed to remove image" });
+      console.error(err);
+    } finally {
+      setIsDeleting(null);
+    }
+  };
+
+  // --- Submit Product Update ---
+  const onSubmit = async (data) => {
+    try {
+      setIsSaving(true);
       const res = await axios.put(
         `${process.env.NEXT_PUBLIC_BASE_URL}/api/products/update/${product._id}`,
-        payload
+        {
+          ...data,
+          images: uploadedUrls,
+          thumbnail: thumbnailUrl,
+          category: selectedParentId,
+          subCategory: selectedSubId,
+        }
       );
       toast.success(res.data.message || "Product updated successfully!");
+      clearLocalCache(CACHE_KEY);
     } catch (err) {
-      console.error(err);
       toast.error(err.response?.data?.error || "Update failed");
+      console.error(err);
     } finally {
       setIsSaving(false);
     }
@@ -321,7 +331,7 @@ export default function UpdateProductForm({ product }) {
             {error}
           </div>
         )}
-       <section className="  sm:mb-6">
+        <section className="  sm:mb-6">
           <div className="bg-base-200   2xl:p-6 rounded-xl">
             <div className="">
               <label className="font-semibold text-sm mb-2 block text-gray-600">
@@ -588,12 +598,12 @@ export default function UpdateProductForm({ product }) {
 
           {/* right Side - Inputs */}
 
-          <div className="bg-base-200 mt-5  p-4 rounded-xl">
+          <div className="bg-base-200 mt-5 p-4 rounded-xl relative">
             <div className="w-full ">
               <h2 className="text-lg font-semibold mb-4">Images Upload</h2>
 
               {/* Main Image Preview */}
-              <div className="w-full    flex items-center justify-center overflow-hidden bg-white">
+              <div className="w-full flex items-center justify-center overflow-hidden bg-white relative">
                 {uploadedUrls.length > 0 ? (
                   <img
                     src={`${thumbnailUrl || uploadedUrls[0]}`}
@@ -601,38 +611,53 @@ export default function UpdateProductForm({ product }) {
                     className="w-full h-[350px] object-contain"
                   />
                 ) : (
-                  <>
-                    <div className="w-full">
-                      <div
-                        onClick={() => fileInputRef.current.click()}
-                        className="w-full h-52 border-2 border-dashed border-green-500 rounded-lg flex flex-col items-center justify-center text-green-600 cursor-pointer transition-colors hover:bg-green-50"
-                        role="button"
-                        tabIndex={0}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === " ")
-                            fileInputRef.current.click();
-                        }}
-                      >
-                        <PlusIcon size={24} />
-                        <span className="mt-2 text-sm  text-red-600 animate-pulse font-bold">
-                          Click or Tap to Upload Images(570px * 570px )
-                        </span>
-                        <span className="text-xs text-gray-500">
-                          (Only image files are allowed)
-                        </span>
-                      </div>
+                  <div
+                    onClick={() => fileInputRef.current.click()}
+                    className="w-full h-52 border-2 border-dashed border-green-500 rounded-lg flex flex-col items-center justify-center text-green-600 cursor-pointer transition-colors hover:bg-green-50"
+                  >
+                    <PlusIcon size={24} />
+                    <span className="mt-2 text-sm text-red-600 animate-pulse font-bold">
+                      Click or Tap to Upload Images (570px * 570px)
+                    </span>
+                    <span className="text-xs text-gray-500">
+                      (Only image files are allowed)
+                    </span>
+                  </div>
+                )}
 
-                      <input
-                        type="file"
-                        required
-                        multiple
-                        accept="image/*"
-                        ref={fileInputRef}
-                        onChange={handleImageChange}
-                        className="hidden"
-                      />
-                    </div>
-                  </>
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  ref={fileInputRef}
+                  onChange={handleImageChange}
+                  className="hidden"
+                />
+
+                {/* Uploading Spinner Overlay */}
+                {uploading && (
+                  <div className="absolute inset-0 bg-white/70 flex items-center justify-center z-20">
+                    <svg
+                      className="animate-spin h-10 w-10 text-green-600"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                      ></path>
+                    </svg>
+                  </div>
                 )}
               </div>
 
@@ -660,7 +685,7 @@ export default function UpdateProductForm({ product }) {
                         handleRemoveImage(url);
                       }}
                       disabled={isDeleting === url}
-                      className={`absolute top-1 right-1 bg-red-600  text-white  w-5 h-5 flex items-center justify-center text-xs z-10 ${
+                      className={`absolute top-1 right-1 bg-red-600 text-white w-5 h-5 flex items-center justify-center text-xs z-10 ${
                         isDeleting === url
                           ? "opacity-50 cursor-not-allowed"
                           : ""
@@ -693,37 +718,14 @@ export default function UpdateProductForm({ product }) {
                   </div>
                 ))}
 
-                {uploadedUrls.length > 0 && (
-                  <>
-                    <div
-                      onClick={() => fileInputRef.current.click()}
-                      className="w-24 h-24 border-2 border-dashed rounded-lg flex items-center justify-center text-green-600 cursor-pointer hover:bg-green-50"
-                    >
-                      <PlusIcon size={20} />
-                    </div>
-
-                    <input
-                      type="file"
-                      multiple
-                      accept="image/*"
-                      ref={fileInputRef}
-                      onChange={handleImageChange}
-                      className="hidden"
-                    />
-                  </>
-                )}
+                {/* Add More Images */}
+                <div
+                  onClick={() => fileInputRef.current.click()}
+                  className="w-24 h-24 border-2 border-dashed rounded-lg flex items-center justify-center text-green-600 cursor-pointer hover:bg-green-50"
+                >
+                  <PlusIcon size={20} />
+                </div>
               </div>
-
-              {/* Uploading Status */}
-              {uploading && (
-                <p className="text-sm text-gray-500 mt-2">Image Uploading...</p>
-              )}
-
-              {errors.thumbnail && (
-                <p className="text-sm text-red-500 mt-1">
-                  {errors.thumbnail.message}
-                </p>
-              )}
             </div>
           </div>
         </section>

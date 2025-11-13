@@ -94,13 +94,13 @@ export default function CategorySection() {
                     </div>
 
                     {/* Category Name */}
-                    <p
-                      className={`text-sm font-semibold text-center mb-4 ${
+                    <h5
+                      className={`text-sm font-semibold text-center truncate mb-4 ${
                         isSelected ? "text-destructive" : "text-gray-800"
                       }`}
                     >
                       {cat.name}
-                    </p>
+                    </h5>
                   </div>
                 </Link>
               );

@@ -1,374 +1,300 @@
 "use client";
-import { PlusIcon } from "lucide-react";
+
+import { useState, useRef, useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
+import { PlusIcon, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
 import { Button } from "../ui/button";
-import AdvertistForm from "./AdvertistForm";
+import {
+  clearLocalCache,
+  getFromLocalCache,
+  removeFromCDN,
+  uploadMultiple,
+} from "@/lib/uploadHelper";
+
+const fetchBanners = async () => {
+  const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/banner`, {
+    cache: "no-store",
+  });
+  const data = await res.json();
+  return data?.data[0]?.imageUrls || [];
+};
 
 export default function BannerAddForm() {
-
-  const [isSaving, setIsSaving] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [uploadedUrls, setUploadedUrls] = useState([]); // For preview,
   const [thumbnailUrl, setThumbnailUrl] = useState(null);
-  const [bannerLoading,setBannerLoading] = useState(true);
-
-  const [isDeleting, setIsDeleting] = useState(null);
-
-  const [error, setError] = useState("");
-    const [imageUrls, setImageUrls] = useState([]);
-    const [isDeletingBanner, setIsDeletingBanner] = useState(null);
-  
-    // Fetch banner data
-    const fetchBannerData = async () => {
-      try {
-        const res = await fetch(
-          `${process.env.NEXT_PUBLIC_BASE_URL}/api/banner`,
-          { cache: "no-store" }
-        );
-        const data = await res.json();
-        setImageUrls(data?.data[0]?.imageUrls || []);
-      } catch (error) {
-        console.error("Failed to fetch banner data", error);
-        setImageUrls([]);
-      }finally{
-        setBannerLoading(false);
-      }
-    };
-  
-    useEffect(() => {
-      fetchBannerData();
-    }, []);
-  
-    // Delete an image
-    const handleRemoveImageBanner = async (urlToRemove) => {
-      try {
-        setIsDeletingBanner(urlToRemove);
-  
-        const filename = urlToRemove.split("/uploads/")[1];
-  
-        await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/banner`, {
-          method: "DELETE",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ filename }),
-        });
-  
-        // রিফ্রেশ করে নতুন ব্যানার দেখাতে পারেন
-        await fetchBannerData();
-      } catch (error) {
-        console.log("image deleted fail:", error);
-      } finally {
-        setIsDeletingBanner(null);
-      }
-    };
-
+  const [uploading, setUploading] = useState(false);
+  const [isDeletingBanner, setIsDeletingBanner] = useState(null);
+  const [error, setError] = useState(null);
   const fileInputRef = useRef();
-  // Load from localStorage on mount
-  useEffect(() => {
-    const stored = localStorage.getItem("uploadedImagesForBanner");
-    if (stored) setUploadedUrls(JSON.parse(stored));
-  }, []);
-
-  // Update localStorage when uploadedUrls changes
-  useEffect(() => {
-    localStorage.setItem("uploadedImagesForBanner", JSON.stringify(uploadedUrls));
-  }, [uploadedUrls]);
-
   const MAX_FILE_SIZE = 1 * 1024 * 1024; // 1MB
+  const CACHE_KEY = "cdn_banner_temp";
+  const queryClient = useQueryClient();
 
-  const handleImageChange = async (e) => {
-    try {
-      setUploading(true);
-      const files = Array.from(e.target.files);
-      const validFiles = [];
-      const errors = [];
+  const { data: imageUrls = [], isLoading: bannerLoading } = useQuery({
+    queryKey: ["banners"],
+    queryFn: fetchBanners,
+  });
 
-      files.forEach((file) => {
-        if (file.size > MAX_FILE_SIZE) {
-          errors.push(`${file.name} is larger than 1MB and was not uploaded.`);
-        } else {
-          validFiles.push(file);
-        }
-      });
+  const {
+    handleSubmit,
+    setValue,
+    watch,
+    formState: { errors },
+  } = useForm({
+    defaultValues: { images: [] },
+  });
 
-      if (errors.length > 0) {
-        setError(errors.join("\n"));
-      }
+  const images = watch("images");
 
-      if (validFiles.length === 0) {
-        setUploading(false);
-        return;
-      }
-
-      const formData = new FormData();
-      validFiles.forEach((file) => formData.append("images", file));
-
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/api/upload`,
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
-
-      const data = await res.json();
-
-      if (data.success) {
-        setUploadedUrls((prev) => [...prev, ...data.imageUrls]);
-      } else {
-        alert("Upload failed. Please try again.");
-      }
-    } catch (error) {
-      console.error("Upload Error:", error);
-      alert("An error occurred while uploading images.");
-    } finally {
-      setUploading(false);
+  // Load cached CDN images
+  useEffect(() => {
+    const cached = getFromLocalCache(CACHE_KEY);
+    if (cached?.length) {
+      setValue("images", cached);
+      setThumbnailUrl(cached[0]);
     }
-  };
+  }, [setValue]);
 
-  const handleRemoveImage = async (urlToRemove) => {
-    try {
-      setIsDeleting(urlToRemove);
-      const filename = urlToRemove.split("/uploads/")[1]; // Extract filename only
+  // Upload to CDN
+  const uploadMutation = useMutation({
+    mutationFn: async (files) => await uploadMultiple(files, CACHE_KEY),
+    onSuccess: (urls) => {
+      setValue("images", [...images, ...urls]);
+      if (!thumbnailUrl) setThumbnailUrl(urls[0]);
+      toast.success("Images uploaded!");
+    },
+    onError: (err) => {
+      console.error(err);
+      toast.error("Upload failed");
+    },
+  });
 
-      // Call API to delete from server
-      await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/api/delete-upload-image`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ filename }),
-        }
-      );
-
-      // Remove from UI + localStorage
-      const filtered = uploadedUrls.filter((url) => url !== urlToRemove);
-      setUploadedUrls(filtered);
-    } catch (error) {
-      console.log(error?.message);
-    } finally {
-      setIsDeleting(null);
-    }
-  };
-
-  const saveImageHandler = async () => {
-    setIsSaving(true);
-    try {
+  // Save banner list to backend
+  const saveMutation = useMutation({
+    mutationFn: async (imageUrls) => {
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_BASE_URL}/api/banner`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(uploadedUrls),
+          body: JSON.stringify(imageUrls),
         }
       );
-
-      const data = await res.json(); // ✅ Await the parsed JSON
-
-    
-
-      if (data?.data) {
-        await fetchBannerData();
-        toast.success(data?.message || "Data saved successfully");
-        setUploadedUrls([]);
-        localStorage.removeItem("uploadedImagesForBanner");
+      return res.json();
+    },
+    onSuccess: (data) => {
+      if (data?.success || data?.data) {
+        toast.success(data?.message || "Saved successfully");
+        clearLocalCache(CACHE_KEY);
+        setValue("images", []);
+        setThumbnailUrl(null);
+        queryClient.invalidateQueries({ queryKey: ["banners"] });
       } else {
-        toast.error(data?.message || "Failed to save data");
+        toast.error(data?.message || "Failed to save");
       }
-    } catch (error) {
-      console.error(error);
-      toast.error("Something went wrong while saving the banner.");
+    },
+    onError: () => toast.error("Save failed"),
+  });
+
+  // Remove from CDN + cache
+  const handleRemove = async (url) => {
+    setIsDeletingBanner(url);
+    try {
+      await removeFromCDN(url, CACHE_KEY);
+      setValue(
+        "images",
+        images.filter((img) => img !== url)
+      );
+      toast.success("Removed");
+    } catch (err) {
+      console.error(err);
+      toast.error("Delete failed");
     } finally {
-      setIsSaving(false);
+      setIsDeletingBanner(null);
     }
   };
-  
+
+  // Upload handler
+  const onFileChange = async (e) => {
+    const files = Array.from(e.target.files).filter(
+      (f) => f.size <= MAX_FILE_SIZE
+    );
+    setError(null);
+    if (!files.length) return setError("Invalid file size (1MB max) use");
+
+    setUploading(true);
+    try {
+      await uploadMutation.mutateAsync(files);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  // Remove with DB + CDN
+  const handleRemoveWithDB = async (url) => {
+    setIsDeletingBanner(url);
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/banner`,
+        {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url }),
+        }
+      );
+      const data = await res.json();
+
+      if (data?.success) {
+        await removeFromCDN(url, CACHE_KEY);
+        toast.success(data?.message || "Deleted successfully");
+        queryClient.invalidateQueries({ queryKey: ["banners"] });
+      } else {
+        toast.error(data?.error || "Failed to delete banner");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Something went wrong while deleting");
+    } finally {
+      setIsDeletingBanner(null);
+    }
+  };
 
   return (
-    <div className="">
-      <div className="   p-4 rounded-xl relative">
-        <div className="w-full">
-          {/* <h2 className="text-lg font-semibold mb-4">Images Upload</h2> */}
+    <div className="p-14 bg-white ">
+      {error && (
+        <p className="text-red-600 font-bold animate-pulse bg-yellow-100 px-4 py-2 mb-4 rounded-md">
+          {error}
+        </p>
+      )}
 
-          {/* Main Image Preview */}
-          <div className="w-full   bg-gray-50 flex items-center justify-center overflow-hidden">
-            {uploadedUrls.length > 0 ? (
-              <img
-                src={`${thumbnailUrl || uploadedUrls[0]}`}
-                alt="Main Preview"
-                className="w-full h-[350px] object-contain"
+      <form
+        onSubmit={handleSubmit((data) => saveMutation.mutate(data.images))}
+        className="space-y-4"
+      >
+        {/* Upload Section */}
+        <div className="w-full bg-gray-50 border border-dashed border-green-500 rounded-lg flex items-center justify-center overflow-hidden relative">
+          {uploading && (
+            <div className="absolute inset-0 bg-white/80 flex flex-col items-center justify-center z-10">
+              <Loader2 className="w-8 h-8 text-green-600 animate-spin mb-2" />
+              <p className="text-green-600 font-semibold">Uploading...</p>
+            </div>
+          )}
+
+          {images.length > 0 ? (
+            <img
+              src={thumbnailUrl || images[0]}
+              alt="Main Preview"
+              className="w-full h-[350px] object-contain"
+            />
+          ) : (
+            <div
+              onClick={() => fileInputRef.current.click()}
+              className="w-full h-52 flex flex-col items-center justify-center text-green-600 cursor-pointer hover:bg-green-50 transition-all"
+            >
+              <PlusIcon size={28} />
+              <span className="mt-2 text-sm font-semibold text-green-800">
+                Click or Tap to Upload (866x350px recommended)
+              </span>
+              <input
+                type="file"
+                multiple
+                accept="image/*"
+                ref={fileInputRef}
+                onChange={onFileChange}
+                className="hidden"
               />
-            ) : (
-              <>
-                <div className="w-full">
-                  <div
-                    onClick={() => fileInputRef.current.click()}
-                    className="w-full h-52 border-2 border-dashed border-green-500 rounded-lg flex flex-col items-center justify-center text-green-600 cursor-pointer transition-colors hover:bg-green-50"
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ")
-                        fileInputRef.current.click();
-                    }}
-                  >
-                    <PlusIcon size={24} />
-                    <span className="mt-2 text-sm  text-red-600 animate-pulse font-bold">
-                      Click or Tap to Upload Images (width = 866px * height = 350px )
-                    </span>
-                    <span className="text-xs text-gray-500">
-                      (Only image files are allowed)
-                    </span>
-                  </div>
+            </div>
+          )}
+        </div>
 
-                  <input
-                    type="file"
-                    multiple
-                    accept="image/*"
-                    ref={fileInputRef}
-                    onChange={handleImageChange}
-                    className="hidden"
-                  />
-                </div>
-              </>
-            )}
-          </div>
-
-          {/* Thumbnails */}
-          <div className="flex items-center gap-3 mt-6">
-            {uploadedUrls?.map((url, idx) => (
+        {/* Thumbnails */}
+        {images.length > 0 && (
+          <div className="flex items-center gap-3 mt-4 flex-wrap">
+            {images.map((url, idx) => (
               <div
                 key={idx}
-                className={`relative w-24 h-24 p-2  overflow-hidden border border-gray-300 cursor-pointer ${
-                  thumbnailUrl === url ? "ring-2 ring-red-600" : ""
+                className={`relative w-24 h-24 p-1 border rounded-md transition-all ${
+                  thumbnailUrl === url ? "ring-2 ring-green-500" : ""
                 }`}
                 onClick={() => setThumbnailUrl(url)}
               >
                 <img
-                  src={`${url}`}
+                  src={url}
                   alt={`img-${idx}`}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover rounded"
                 />
-
-                {/* Remove Button */}
                 <button
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleRemoveImage(url);
+                    handleRemove(url);
                   }}
-                  disabled={isDeleting === url}
-                  className={`absolute top-1 right-1 bg-red-600  text-white  w-5 h-5 flex items-center justify-center text-xs z-10 ${
-                    isDeleting === url ? "opacity-50 cursor-not-allowed" : ""
-                  }`}
+                  disabled={isDeletingBanner === url}
+                  className="absolute top-1 right-1 bg-red-600 hover:bg-red-700 text-white w-5 h-5 flex items-center justify-center text-xs rounded"
                 >
-                  {isDeleting === url ? (
-                    <svg className="animate-spin w-3 h-3" viewBox="0 0 24 24">
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                        fill="none"
-                      />
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
-                      />
-                    </svg>
+                  {isDeletingBanner === url ? (
+                    <Loader2 className="w-3 h-3 animate-spin" />
                   ) : (
                     "✕"
                   )}
                 </button>
               </div>
             ))}
-
-            {uploadedUrls.length > 0 && (
-              <>
-                <div
-                  onClick={() => fileInputRef.current.click()}
-                  className="w-24 h-24 border-2 border-dashed rounded-lg flex items-center justify-center text-green-600 cursor-pointer hover:bg-green-50"
-                >
-                  <PlusIcon size={20} />
-                </div>
-
-                <input
-                  type="file"
-                  multiple
-                  accept="image/*"
-                  ref={fileInputRef}
-                  onChange={handleImageChange}
-                  className="hidden"
-                />
-              </>
-            )}
           </div>
+        )}
 
-          {/* Uploading Status */}
-          {uploading && (
-            <p className="text-sm text-gray-500 mt-2">Image Uploading...</p>
-          )}
-        </div>
-        <div className="my-4">
+        {/* Save Button */}
+        <div className="flex justify-end mt-4">
           <Button
-            disabled={!uploadedUrls?.length || isSaving}
-            onClick={saveImageHandler}
-            className="btn bg-green-700 text-white absolute bottom-3 right-3"
+            type="submit"
+            disabled={!images.length || saveMutation.isLoading}
+            className="bg-green-700 text-white hover:bg-green-800 transition-all duration-200 flex items-center gap-2"
           >
-            {isSaving ? "Saving..." : "Save Image"}
+            {saveMutation.isLoading && (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            )}
+            {saveMutation.isLoading ? "Submitting..." : "Save Image"}
           </Button>
         </div>
-      </div>
+      </form>
 
-      {/* data save in database button  */}
-
-      <div className="bg-base-100 sm:mt-5 mt-2">
-        <h2 className="text-lg font-semibold mb-1">Existing Banners</h2>
-        <p className="mb-6">Manage your existing banners below.</p>
-        {/* Future implementation for displaying existing banners */}
-      
-        <div className=" overflow-y-auto h-[300px]">
+      {/* Existing Banners */}
+      <div className="bg-gray-50 mt-6 p-3 rounded-lg">
+        <h2 className="text-lg font-semibold mb-2">Existing Banners</h2>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 max-h-[300px] overflow-y-auto">
           {bannerLoading ? (
-            "..."
+            <p className="text-gray-500 italic">Loading...</p>
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {imageUrls.map((img, index) => (
-                <div
-                  key={index}
-                  className="relative group border rounded overflow-hidden"
+            imageUrls.map((img, idx) => (
+              <div
+                key={idx}
+                className="relative border rounded overflow-hidden group"
+              >
+                <Image
+                  src={img}
+                  width={400}
+                  height={300}
+                  alt={`Banner ${idx}`}
+                  className="object-cover w-full h-full transition-transform duration-300 group-hover:scale-105"
+                />
+                <button
+                  onClick={() => handleRemoveWithDB(img)}
+                  disabled={isDeletingBanner === img}
+                  className="absolute top-2 right-2 bg-red-500 hover:bg-red-700 text-white px-2 py-1 text-xs rounded flex items-center gap-1"
                 >
-                  <Image
-                    src={`${img}`}
-                    width={400}
-                    height={300}
-                    alt={`Banner ${index}`}
-                    className="object-cover w-full h-full"
-                  />
-                  <button
-                    onClick={() =>
-                      handleRemoveImageBanner(
-                        `${process.env.NEXT_PUBLIC_BASE_URL}${img}`
-                      )
-                    }
-                    disabled={
-                      isDeletingBanner ===
-                      `${process.env.NEXT_PUBLIC_BASE_URL}${img}`
-                    }
-                    className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 text-sm rounded hover:bg-red-700"
-                  >
-                    {isDeletingBanner ===
-                    `${process.env.NEXT_PUBLIC_BASE_URL}${img}`
-                      ? "Removing..."
-                      : "Remove"}
-                  </button>
-                </div>
-              ))}
-            </div>
+                  {isDeletingBanner === img ? (
+                    <>
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      Removing...
+                    </>
+                  ) : (
+                    "Remove"
+                  )}
+                </button>
+              </div>
+            ))
           )}
         </div>
       </div>

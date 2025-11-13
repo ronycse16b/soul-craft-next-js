@@ -2,9 +2,8 @@ import { adminOnlyMiddleware } from "@/lib/authMiddleware";
 import { connectDB } from "@/lib/db.config";
 import { verifyAccess } from "@/lib/roleMiddleware";
 import productModel from "@/models/product.model";
-import fs from "fs";
 import { NextResponse } from "next/server";
-import path from "path";
+
 
 
 
@@ -25,34 +24,7 @@ export async function PUT(req, { params }) {
       return new Response("Product not found", { status: 404 });
     }
 
-    // --- Extract image paths from HTML description ---
-    const extractImagePaths = (html) => {
-      if (!html) return [];
-      const matches = [...html.matchAll(/<img[^>]+src="([^">]+)"/g)];
-      return matches.map((m) => m[1]);
-    };
 
-    // --- Delete unused images in description ---
-    const oldImages = new Set(extractImagePaths(product.description));
-    const newImages = new Set(extractImagePaths(body.description));
-
-    const removedImages = [...oldImages].filter((img) => !newImages.has(img));
-
-    for (const imgPath of removedImages) {
-      const relativePath = imgPath.startsWith("/")
-        ? imgPath.substring(1)
-        : imgPath;
-      const fullPath = path.join(process.cwd(), relativePath);
-
-      if (fs.existsSync(fullPath)) {
-        try {
-          fs.unlinkSync(fullPath);
-          console.log(`Deleted unused image: ${fullPath}`);
-        } catch (err) {
-          console.error(`Failed to delete ${fullPath}: ${err.message}`);
-        }
-      }
-    }
 
     // --- Convert numeric fields in variants array ---
     if (body.variants && Array.isArray(body.variants)) {

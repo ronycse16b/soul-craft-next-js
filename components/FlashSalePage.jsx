@@ -1,8 +1,18 @@
 "use client";
 
+
+import dynamic from "next/dynamic";
+
+// Lazy load ProductCard (client-only)
+const ProductCard = dynamic(() => import("@/components/ProductCard"), {
+  ssr: false,
+  loading: () => (
+    <div className="h-[240px] bg-gray-100 animate-pulse rounded-md" />
+  ),
+});
 import React, { useEffect, useState } from "react";
 import Container from "@/components/Container";
-import ProductCard from "@/components/ProductCard";
+
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { motion, AnimatePresence } from "framer-motion";
@@ -137,7 +147,7 @@ export default function FlashSalePage() {
       <Container className="py-2 sm:py-12  px-2">
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
           <AnimatePresence>
-            {productsToRender.map((product, index) => {
+            {productsToRender?.map((product, index) => {
               const isNew = index >= prevVisibleCount;
               return isNew ? (
                 <motion.div

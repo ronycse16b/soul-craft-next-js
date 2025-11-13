@@ -39,7 +39,7 @@ export default function NewArrivals() {
         {main && (
           <Link
             href={`/products/${main.slug}`}
-            className="relative md:col-span-2 overflow-hidden group h-[250px] sm:h-[350px] md:h-full rounded-lg block"
+            className="relative md:col-span-2 overflow-hidden group h-[250px] sm:h-[350px] md:h-full rounded block"
           >
             <Image
               src={main.thumbnail}
@@ -65,7 +65,7 @@ export default function NewArrivals() {
           {topRight && (
             <Link
               href={`/products/${topRight.slug}`}
-              className="relative overflow-hidden group h-[200px] sm:h-[250px] md:h-[50%] rounded-lg block"
+              className="relative overflow-hidden group h-[200px] sm:h-[250px] md:h-[50%] rounded block"
             >
               <Image
                 src={topRight.thumbnail}
@@ -93,7 +93,7 @@ export default function NewArrivals() {
                   <Link
                     key={i}
                     href={`/products/${item.slug}`}
-                    className="relative overflow-hidden group rounded-lg block"
+                    className="relative overflow-hidden group rounded block"
                   >
                     <Image
                       src={item.thumbnail}

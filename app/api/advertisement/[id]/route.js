@@ -1,17 +1,17 @@
 import Advertisement from "@/models/advertisement.model";
 import { connectDB } from "@/lib/db.config";
-import fs from "fs/promises";
-import path from "path";
-import { verifyAccess } from "@/lib/roleMiddleware";
 
+import { verifyAccess } from "@/lib/roleMiddleware";
+const CDN_URL =
+  process.env.NEXT_PUBLIC_CDN_URL || "https://cdn.soulcraftbd.com";
 
 export async function PUT(req, { params }) {
-    const auth = await verifyAccess(req, {
-      roles: ["admin", "moderator"],
-      permission: "update",
-    });
-    if (auth instanceof Response) return auth;
-  const {id} = await params;
+  const auth = await verifyAccess(req, {
+    roles: ["admin", "moderator"],
+    permission: "update",
+  });
+  if (auth instanceof Response) return auth;
+  const { id } = await params;
   await connectDB();
   const data = await req.json();
   const updated = await Advertisement.findByIdAndUpdate(id, data, {
@@ -26,6 +26,7 @@ export async function DELETE(req, { params }) {
     permission: "delete",
   });
   if (auth instanceof Response) return auth;
+
   const { id } = await params;
   await connectDB();
 
@@ -38,22 +39,21 @@ export async function DELETE(req, { params }) {
     });
   }
 
-  // Delete image from server if exists
+  // Delete image from CDN if exists
   if (ad.image) {
     try {
-      const filename = ad.image.split("/").pop();
-      const imagePath = path.join(process.cwd(), "uploads", filename);
-
-      // Check if file exists before deleting
-      await fs.access(imagePath);
-      await fs.unlink(imagePath);
-      console.log("Image deleted:", filename);
-    } catch (err) {
-      if (err.code === "ENOENT") {
-        console.warn("Image file does not exist:", err.message);
-      } else {
-        console.warn("Failed to delete image:", err.message);
+      const filename = ad.image.split("/uploads/")[1];
+      if (filename) {
+        const res = await fetch(`${CDN_URL}/images/${filename}`, {
+          method: "DELETE",
+        });
+        const data = await res.json();
+        if (!data.success) {
+          console.warn("Failed to delete image from CDN:", ad.image);
+        }
       }
+    } catch (err) {
+      console.warn("Error deleting image from CDN:", err);
     }
   }
 

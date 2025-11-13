@@ -1,12 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import dynamic from "next/dynamic";
+
+// Lazy load ProductCard (client-only)
+const ProductCard = dynamic(() => import("./ProductCard"), {
+  ssr: false,
+  loading: () => (
+    <div className="h-[240px] bg-gray-100 animate-pulse rounded-md" />
+  ),
+});
+
+import { Suspense, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import Container from "./Container";
-import ProductCard from "./ProductCard";
 
 export default function ExploreProducts() {
   const pathname = usePathname(); // get current route
@@ -16,7 +25,9 @@ export default function ExploreProducts() {
   const { data: categoriesData, isLoading: catLoading } = useQuery({
     queryKey: ["categories"],
     queryFn: async () => {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/all-products`);
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/all-products`
+      );
       if (!res.ok) throw new Error("Failed to fetch categories");
       const json = await res.json();
       return json.categories || [];
@@ -26,7 +37,10 @@ export default function ExploreProducts() {
   const { data: productsData, isLoading: prodLoading } = useQuery({
     queryKey: ["products", activeTab],
     queryFn: async () => {
-      const url = new URL(`${process.env.NEXT_PUBLIC_BASE_URL}/api/all-products`, window.location.origin);
+      const url = new URL(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/all-products`,
+        window.location.origin
+      );
       if (activeTab !== "all") url.searchParams.set("slug", activeTab);
       url.searchParams.set("limit", limit.toString());
 
@@ -43,7 +57,7 @@ export default function ExploreProducts() {
   const handleLoadMore = () => setLimit((prev) => prev + 6);
 
   return (
-    <Container className=" bg-white mt-2 px-1">
+    <Container className=" bg-white my-3 px-1">
       <div>
         {/* Conditionally render header only on /shop */}
         {/* {!pathname === "/shop" && (
@@ -111,7 +125,7 @@ export default function ExploreProducts() {
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
             {Array.from({ length: 5 }).map((_, idx) => (
               <Card
-                key={idx+1}
+                key={idx + 1}
                 className="animate-pulse border rounded-lg overflow-hidden"
               >
                 <div className="bg-gray-200 h-40 w-full" />
@@ -128,8 +142,15 @@ export default function ExploreProducts() {
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-            {products.map((product) => (
-              <ProductCard key={product._id} product={product} />
+            {products?.map((product) => (
+              <Suspense
+                key={product._id}
+                fallback={
+                  <div className="h-[240px] bg-gray-100 animate-pulse rounded-md" />
+                }
+              >
+                <ProductCard product={product} />
+              </Suspense>
             ))}
           </div>
         )}

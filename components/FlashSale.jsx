@@ -1,12 +1,22 @@
 "use client";
 
-import React, { useEffect, useState, useRef } from "react";
+import dynamic from "next/dynamic";
+
+// Lazy load ProductCard (client-only)
+const ProductCard = dynamic(() => import("./ProductCard"), {
+  ssr: false,
+  loading: () => (
+    <div className="h-[240px] bg-gray-100 animate-pulse rounded-md" />
+  ),
+});
+
+import React, { useEffect, useState, useRef, Suspense } from "react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay, Navigation } from "swiper/modules";
 import "swiper/css";
 import "swiper/css/navigation";
 import Container from "./Container";
-import ProductCard from "./ProductCard";
+
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
@@ -26,13 +36,14 @@ export default function FlashSale() {
   const { data = [], isLoading } = useQuery({
     queryKey: ["flashSales"],
     queryFn: async () => {
-      const res = await axios.get(`${process.env.NEXT_PUBLIC_BASE_URL}/api/flash-sale`); // your API
+      const res = await axios.get(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/flash-sale`
+      ); // your API
       return res.data.flashSales || [];
     },
   });
 
   const activeSale = data?.find((sale) => sale?.isActive);
-  
 
   // Countdown timer
   useEffect(() => {
@@ -76,7 +87,7 @@ export default function FlashSale() {
   // Render
   return (
     <Container className="w-full sm:py-12 py-6 px-1 sm:px-8 bg-gradient-to-b ">
-      {activeSale &&
+      {activeSale && (
         <>
           {/* Header */}
           <div className="mb-8">
@@ -122,11 +133,17 @@ export default function FlashSale() {
                 modules={[Autoplay, Navigation]}
                 className="mySwiper"
               >
-                {activeSale?.products?.map(({ productId,index }) => {
-              
+                {activeSale?.products?.map(({ productId, index }) => {
                   return (
-                    <SwiperSlide  key={productId._id}>
-                      <ProductCard product={productId}  />
+                    <SwiperSlide>
+                      <Suspense
+                        key={productId._id}
+                        fallback={
+                          <div className="h-[240px] bg-gray-100 animate-pulse rounded-md" />
+                        }
+                      >
+                        <ProductCard product={productId} />
+                      </Suspense>
                     </SwiperSlide>
                   );
                 })}
@@ -143,7 +160,7 @@ export default function FlashSale() {
 
           <hr className="my-8 border-gray-200" />
         </>
-      }
+      )}
     </Container>
   );
 }

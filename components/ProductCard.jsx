@@ -55,9 +55,14 @@ export default function ProductCard({ product }) {
           <Image
             src={mainImage}
             alt={product.productName}
-            width={404}
-            height={500}
-            className={`w-full aspect-[4/4] object-cover bg-gray-100 transition-transform duration-500 ${
+            width={300}
+            height={300}
+            sizes="(max-width: 640px) 160px, (max-width: 1024px) 220px, 240px"
+            quality={70}
+            loading="lazy"
+            placeholder="blur"
+            blurDataURL="/placeholder.webp" // tiny lightweight placeholder
+            className={`w-full aspect-square object-cover transition-transform duration-500 ${
               hovered ? "scale-105" : "scale-100"
             }`}
           />

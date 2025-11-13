@@ -16,6 +16,13 @@ import Swal from "sweetalert2";
 
 Quill.register("modules/imageResize", ImageResize);
 
+import {
+  clearLocalCache,
+  getFromLocalCache,
+  removeFromCDN,
+  uploadMultiple,
+} from "@/lib/uploadHelper";
+
 export default function AddProductForm() {
   const {
     register,
@@ -112,10 +119,6 @@ export default function AddProductForm() {
     reset({ ...getValues(), variants: mergedVariants });
   };
 
-  const [uploadedDescriptionImages, setUploadedDescriptionImages] = useState(
-    []
-  );
-
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedParentId, setSelectedParentId] = useState("");
@@ -160,34 +163,11 @@ export default function AddProductForm() {
   const [thumbnailUrl, setThumbnailUrl] = useState(null);
 
   const [isDeleting, setIsDeleting] = useState(null);
-
-  const initialColors = ["Black", "Brown", "Olive", "White", "Navy"];
-
   const [sizes, setSizes] = useState([]);
   const [colors, setColors] = useState([]);
-  const [colorInput, setColorInput] = useState("");
-  const [showColorInput, setShowColorInput] = useState(false);
   const [error, setError] = useState("");
 
   const fileInputRef = useRef();
-
-  // Load from localStorage on mount
-  useEffect(() => {
-    const stored = localStorage.getItem("uploadedImagesForAdd");
-    if (stored) setUploadedUrls(JSON.parse(stored));
-  }, []);
-
-  // Update localStorage when uploadedUrls changes
-
-  useEffect(() => {
-    if (uploadedUrls?.length > 0) {
-      console.log("🟨 Saving to LocalStorage:", uploadedUrls);
-      localStorage.setItem(
-        "uploadedImagesForAdd",
-        JSON.stringify(uploadedUrls)
-      );
-    }
-  }, [uploadedUrls]);
 
   const modules = {
     toolbar: {
@@ -202,50 +182,7 @@ export default function AddProductForm() {
         ["image"], // ✅ enable image upload
         ["clean"],
       ],
-      handlers: {
-        image: function () {
-          const input = document.createElement("input");
-          input.setAttribute("type", "file");
-          input.setAttribute("accept", "image/*");
-          input.click();
-
-          input.onchange = async () => {
-            const file = input.files[0];
-
-            if (!file) return;
-            if (file.size > 1 * 1024 * 1024) {
-              alert("File too large. Max 1MB allowed.");
-              return;
-            }
-
-            const formData = new FormData();
-            formData.append("images", file); // your backend expects 'images'
-
-            try {
-              const res = await fetch(
-                `${process.env.NEXT_PUBLIC_BASE_URL}/api/upload`,
-                {
-                  method: "POST",
-                  body: formData,
-                }
-              );
-
-              const data = await res.json();
-              if (data.success) {
-                const imageUrl = data.imageUrls[0]; // assuming single file upload
-                const range = this.quill.getSelection();
-                this.quill.insertEmbed(range.index, "image", imageUrl);
-                setUploadedDescriptionImages((prev) => [...prev, imageUrl]);
-              } else {
-                alert("Image upload failed.");
-              }
-            } catch (error) {
-              console.error("Image upload error:", error);
-              alert("Upload failed. Try again.");
-            }
-          };
-        },
-      },
+    
     },
     clipboard: {
       matchVisual: false,
@@ -258,7 +195,6 @@ export default function AddProductForm() {
   const { quill: descriptionQuill, quillRef: descriptionRef } = useQuill({
     modules,
   });
-  // const { quill: featuresQuill, quillRef: featuresRef } = useQuill({ modules });
 
   useEffect(() => {
     if (descriptionQuill) {
@@ -269,182 +205,152 @@ export default function AddProductForm() {
     }
   }, [descriptionQuill]);
 
-  const MAX_FILE_SIZE = 1 * 1024 * 1024; // 1MB
 
-  const handleImageChange = async (e) => {
-    try {
-      setUploading(true);
-      const files = Array.from(e.target.files);
-      const validFiles = [];
-      const errors = [];
 
-      files.forEach((file) => {
-        if (file.size > MAX_FILE_SIZE) {
-          Swal.fire({
-            icon: "error",
-            title: "File Too Large",
-            text: `${file.name} is larger than 1MB and was not uploaded.`,
-            confirmButtonText: "OK",
-          });
-        } else {
-          validFiles.push(file);
-        }
-      });
+const MAX_FILE_SIZE = 1 * 1024 * 1024; // 1MB
+const CACHE_KEY = "cdn_temp";
 
-      if (errors.length > 0) {
-        setError(errors.join("\n"));
-      }
+// Load cached images on mount
+useEffect(() => {
+  const cachedImages = getFromLocalCache(CACHE_KEY);
+  if (cachedImages.length > 0) {
+    setUploadedUrls(cachedImages);
+    setThumbnailUrl(cachedImages[0]); // default thumbnail
+  }
+}, []);
 
-      if (validFiles.length === 0) {
-        setUploading(false);
-        return;
-      }
+// Handle multiple image selection and upload
+const handleImageChange = async (e) => {
+  try {
+    setUploading(true);
+    const files = Array.from(e.target.files);
+    const validFiles = [];
 
-      const formData = new FormData();
-      validFiles.forEach((file) => formData.append("images", file));
-
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/api/upload`,
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
-
-      const data = await res.json();
-
-      if (data.success) {
-        setUploadedUrls((prev) => [...prev, ...data.imageUrls]);
+    // Validate file size
+    files.forEach((file) => {
+      if (file.size > MAX_FILE_SIZE) {
+        Swal.fire({
+          icon: "error",
+          title: "File Too Large",
+          text: `${file.name} is larger than 1MB and was not uploaded.`,
+          confirmButtonText: "OK",
+        });
       } else {
-        alert("Upload failed. Please try again.");
+        validFiles.push(file);
       }
-    } catch (error) {
-      console.error("Upload Error:", error);
-      alert("An error occurred while uploading images.");
-    } finally {
+    });
+
+    if (validFiles.length === 0) {
       setUploading(false);
-    }
-  };
-
-  const handleRemoveImage = async (urlToRemove) => {
-    try {
-      setIsDeleting(urlToRemove);
-      const filename = urlToRemove.split("/uploads/")[1]; // Extract filename only
-
-      // Call API to delete from server
-      await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/api/delete-upload-image`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ filename }),
-        }
-      );
-
-      // Remove from UI + localStorage
-      const filtered = uploadedUrls.filter((url) => url !== urlToRemove);
-      setUploadedUrls(filtered);
-    } catch (error) {
-      console.log(error?.message);
-    } finally {
-      setIsDeleting(null);
-    }
-  };
-
-  const onSubmit = async (data) => {
-    setIsSaving(true);
-
-    // ✅ Thumbnail check
-    if (!thumbnailUrl) {
-      setError("thumbnail is Required", {
-        type: "manual",
-        message: "Thumbnail image is required",
-      });
-      setIsSaving(false);
       return;
-    } else {
-      setError("");
     }
 
-    const productPayload = {
-      ...data,
+    // Upload valid files to CDN (this already saves to local cache)
+    await uploadMultiple(validFiles, CACHE_KEY);
 
-      colors,
-      images: uploadedUrls,
-      thumbnail: thumbnailUrl,
-      subCategory: selectedSubId,
-      category: selectedParentId,
-    };
+    // Read current cached URLs from localStorage
+    const cachedUrls = getFromLocalCache(CACHE_KEY);
 
-    try {
-      // ✅ Step 1: Submit product to server
-      const res = await axios.post(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/api/products`,
-        productPayload
-      );
-      toast.success(res.data.message);
+    // Update state directly from cache (avoids duplicates)
+    setUploadedUrls(cachedUrls);
 
-      // ✅ Step 2: Extract used image filenames from description
-      const html = descriptionRef.current?.firstChild?.innerHTML || "";
-
-      const usedImages = Array.from(
-        new DOMParser()
-          .parseFromString(html, "text/html")
-          .querySelectorAll("img")
-      )
-        .map((img) => img.getAttribute("src"))
-        .filter((src) => src?.startsWith("/uploads/")); // ✅ Only server images
-
-      const usedFilenames = usedImages.map((src) =>
-        src.split("/uploads/").pop()
-      );
-
-      // ✅ Step 3: Filter out unused images
-      const unusedImages = uploadedDescriptionImages.filter((url) => {
-        const filename = url.split("/uploads/").pop();
-        return !usedFilenames.includes(filename);
-      });
-
-      // ✅ Step 4: Delete unused images from server
-      if (unusedImages?.length > 0) {
-        await Promise.all(
-          unusedImages.map((url) => {
-            const filename = url.split("/uploads/").pop();
-            return fetch(
-              `${process.env.NEXT_PUBLIC_BASE_URL}/api/delete-upload-image`,
-              {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ filename }),
-              }
-            );
-          })
-        );
-      }
-
-      // ✅ Step 3: Reset all states if needed (optional)
-      reset();
-      setSizes([]);
-      setColors([]);
-      setUploadedUrls([]);
-
-      setSelectedParentId("");
-      setSelectedSubId("");
-      setThumbnailUrl(null);
-      descriptionQuill?.setText("");
-      // featuresQuill?.setText("");
-      localStorage.removeItem("uploadedImagesForAdd");
-    } catch (err) {
-      const errorMsg = err.response?.data?.error || "Something went wrong!";
-      console.error(err);
-      setError(errorMsg);
-    } finally {
-      setIsSaving(false);
+    // Set thumbnail if none
+    if (!thumbnailUrl && cachedUrls.length > 0) {
+      setThumbnailUrl(cachedUrls[0]);
     }
+
+    toast.success(`${validFiles.length} file(s) uploaded successfully!`);
+  } catch (err) {
+    console.error("Upload Error:", err);
+    toast.error("An error occurred while uploading images.");
+  } finally {
+    setUploading(false);
+  }
+};
+
+
+// Remove an uploaded image
+const handleRemoveImage = async (urlToRemove) => {
+  try {
+    setIsDeleting(urlToRemove);
+
+    // Remove image from CDN & local cache
+    await removeFromCDN(urlToRemove, CACHE_KEY);
+
+    // Update state
+    const filtered = uploadedUrls.filter((url) => url !== urlToRemove);
+    setUploadedUrls(filtered);
+
+    // Update thumbnail if removed
+    if (thumbnailUrl === urlToRemove) {
+      setThumbnailUrl(filtered[0] || null);
+    }
+
+    toast.success("Image removed successfully!");
+
+    // Clear cache if no images left
+    if (filtered.length === 0) clearLocalCache(CACHE_KEY);
+  } catch (err) {
+    console.error("Delete Error:", err);
+    toast.error("Failed to remove image.");
+  } finally {
+    setIsDeleting(null);
+  }
+};
+
+// On form submit, clear cache
+const onSubmit = async (data) => {
+  setIsSaving(true);
+
+  if (!thumbnailUrl) {
+    setError("thumbnail is Required", {
+      type: "manual",
+      message: "Thumbnail image is required",
+    });
+    setIsSaving(false);
+    return;
+  } else {
+    setError("");
+  }
+
+  const productPayload = {
+    ...data,
+    colors,
+    images: uploadedUrls,
+    thumbnail: thumbnailUrl,
+    subCategory: selectedSubId,
+    category: selectedParentId,
   };
+
+  try {
+    const res = await axios.post(
+      `${process.env.NEXT_PUBLIC_BASE_URL}/api/products`,
+      productPayload
+    );
+    toast.success(res.data.message);
+
+    // Reset form + clear uploaded images
+    reset();
+    setUploadedUrls([]);
+    setThumbnailUrl(null);
+    setSizes([]);
+    setColors([]);
+    clearLocalCache(CACHE_KEY);
+    setSelectedParentId("");
+    setSelectedSubId("");
+    descriptionQuill?.setText("");
+  } catch (err) {
+    const errorMsg = err.response?.data?.error || "Something went wrong!";
+    console.error(err);
+    setError(errorMsg);
+  } finally {
+    setIsSaving(false);
+  }
+};
+
 
   if (error) {
-    toast.error(error || 'Something Went Wrong', {
+    toast.error(error || "Something Went Wrong", {
       position: "bottom-right",
     });
   }
@@ -733,68 +639,66 @@ export default function AddProductForm() {
 
           {/* right Side - Inputs */}
 
-          <div className="bg-base-200 mt-5  p-4 rounded-xl">
-            <div className="w-full ">
+          <div className="bg-base-200 mt-5 p-4 rounded-xl relative">
+            <div className="w-full">
               <h2 className="text-lg font-semibold mb-4">Images Upload</h2>
 
               {/* Main Image Preview */}
-              <div className="w-full    flex items-center justify-center overflow-hidden bg-white">
+              <div className="w-full flex items-center justify-center overflow-hidden bg-white rounded-lg relative border border-gray-200">
                 {uploadedUrls.length > 0 ? (
                   <img
-                    src={`${thumbnailUrl || uploadedUrls[0]}`}
+                    src={thumbnailUrl || uploadedUrls[0]}
                     alt="Main Preview"
                     className="w-full h-[350px] object-contain"
                   />
                 ) : (
-                  <>
-                    <div className="w-full">
-                      <div
-                        onClick={() => fileInputRef.current.click()}
-                        className="w-full h-52 border-2 border-dashed border-green-500 rounded-lg flex flex-col items-center justify-center text-green-600 cursor-pointer transition-colors hover:bg-green-50"
-                        role="button"
-                        tabIndex={0}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === " ")
-                            fileInputRef.current.click();
-                        }}
-                      >
-                        <PlusIcon size={24} />
-                        <span className="mt-2 text-sm  text-red-600 animate-pulse font-bold">
-                          Click or Tap to Upload Images(570px * 570px )
-                        </span>
-                        <span className="text-xs text-gray-500">
-                          (Only image files are allowed)
-                        </span>
-                      </div>
+                  <div
+                    onClick={() => fileInputRef.current.click()}
+                    className="w-full h-52 border-2 border-dashed border-green-500 rounded-lg flex flex-col items-center justify-center text-green-600 cursor-pointer transition hover:bg-green-50"
+                  >
+                    <PlusIcon size={24} />
+                    <span className="mt-2 text-sm text-red-600 animate-pulse font-bold">
+                      Click or Tap to Upload Images (570px * 570px)
+                    </span>
+                    <span className="text-xs text-gray-500">
+                      (Only image files allowed)
+                    </span>
+                  </div>
+                )}
 
-                      <input
-                        type="file"
-                        required
-                        multiple
-                        accept="image/*"
-                        ref={fileInputRef}
-                        onChange={handleImageChange}
-                        className="hidden"
-                      />
-                    </div>
-                  </>
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  ref={fileInputRef}
+                  onChange={handleImageChange}
+                  className="hidden"
+                />
+
+                {/* Spinner overlay */}
+                {uploading && (
+                  <div className="absolute inset-0 bg-black/30 flex items-center justify-center rounded-lg">
+                    <div className="w-12 h-12 border-4 border-t-transparent border-white rounded-full animate-spin"></div>
+                  </div>
                 )}
               </div>
 
               {/* Thumbnails */}
-              <div className="flex items-center gap-3 mt-6">
+              <div className="flex items-center gap-3 mt-6 overflow-x-auto">
                 {uploadedUrls.map((url, idx) => (
                   <div
                     key={idx}
-                    className={`relative w-24 h-24 p-2 rounded-lg overflow-hidden border border-gray-300 cursor-pointer ${
-                      thumbnailUrl === url ? "ring-2 ring-red-600" : ""
+                    className={`relative w-24 h-24 flex-shrink-0 p-2 rounded-lg overflow-hidden border cursor-pointer transition hover:scale-105 ${
+                      thumbnailUrl === url
+                        ? "ring-2 ring-red-600"
+                        : "border-gray-300"
                     }`}
                     onClick={() => setThumbnailUrl(url)}
                   >
                     <img
-                      src={`${url}`}
+                      src={url}
                       alt={`img-${idx}`}
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-cover rounded"
                     />
 
                     {/* Remove Button */}
@@ -805,32 +709,14 @@ export default function AddProductForm() {
                         handleRemoveImage(url);
                       }}
                       disabled={isDeleting === url}
-                      className={`absolute top-1 right-1 bg-red-600  text-white  w-5 h-5 flex items-center justify-center text-xs z-10 ${
+                      className={`absolute top-1 right-1 bg-red-600 text-white w-5 h-5 flex items-center justify-center text-xs z-10 rounded-full ${
                         isDeleting === url
                           ? "opacity-50 cursor-not-allowed"
                           : ""
                       }`}
                     >
                       {isDeleting === url ? (
-                        <svg
-                          className="animate-spin w-3 h-3"
-                          viewBox="0 0 24 24"
-                        >
-                          <circle
-                            className="opacity-25"
-                            cx="12"
-                            cy="12"
-                            r="10"
-                            stroke="currentColor"
-                            strokeWidth="4"
-                            fill="none"
-                          />
-                          <path
-                            className="opacity-75"
-                            fill="currentColor"
-                            d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
-                          />
-                        </svg>
+                        <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                       ) : (
                         "✕"
                       )}
@@ -838,37 +724,14 @@ export default function AddProductForm() {
                   </div>
                 ))}
 
-                {uploadedUrls.length > 0 && (
-                  <>
-                    <div
-                      onClick={() => fileInputRef.current.click()}
-                      className="w-24 h-24 border-2 border-dashed rounded-lg flex items-center justify-center text-green-600 cursor-pointer hover:bg-green-50"
-                    >
-                      <PlusIcon size={20} />
-                    </div>
-
-                    <input
-                      type="file"
-                      multiple
-                      accept="image/*"
-                      ref={fileInputRef}
-                      onChange={handleImageChange}
-                      className="hidden"
-                    />
-                  </>
-                )}
+                {/* Add More Button */}
+                <div
+                  onClick={() => fileInputRef.current.click()}
+                  className="w-24 h-24 flex-shrink-0 border-2 border-dashed rounded-lg flex items-center justify-center text-green-600 cursor-pointer hover:bg-green-50 transition"
+                >
+                  <PlusIcon size={20} />
+                </div>
               </div>
-
-              {/* Uploading Status */}
-              {uploading && (
-                <p className="text-sm text-gray-500 mt-2">Image Uploading...</p>
-              )}
-
-              {errors.thumbnail && (
-                <p className="text-sm text-red-500 mt-1">
-                  {errors.thumbnail.message}
-                </p>
-              )}
             </div>
           </div>
         </section>

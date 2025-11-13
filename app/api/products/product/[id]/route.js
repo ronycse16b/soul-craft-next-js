@@ -1,11 +1,10 @@
-import { adminOnlyMiddleware } from "@/lib/authMiddleware";
+
 import { connectDB } from "@/lib/db.config";
 import { verifyAccess } from "@/lib/roleMiddleware";
 import productModel from "@/models/product.model";
-import fs from "fs";
 import { NextResponse } from "next/server";
-import path from "path";
-
+const CDN_URL =
+  process.env.NEXT_PUBLIC_CDN_URL || "https://cdn.soulcraftbd.com";
 
 
 export async function PUT(req, { params }) {
@@ -57,7 +56,7 @@ export async function DELETE(req, { params }) {
   if (auth instanceof Response) return auth;
 
   await connectDB();
-  const { id } = await params; // params is an object, no await needed here
+  const { id } = await params;
 
   try {
     const product = await productModel.findById(id);
@@ -68,62 +67,25 @@ export async function DELETE(req, { params }) {
       );
     }
 
-    // Extract and delete images inside description BEFORE deleting product
-    const extractImagePaths = (html) => {
-      if (!html) return [];
-      const matches = [...html.matchAll(/<img[^>]+src="([^">]+)"/g)];
-      return matches.map((m) => m[1]);
-    };
+    // Delete images from CDN (wait for all to finish)
+    const deletePromises = product.images.map(async (imageUrl) => {
+      try {
+        const filename = imageUrl.split("/uploads/")[1];
+        if (!filename) return;
 
-    const deleteImagesFromDescription = (descriptionHtml) => {
-      const imagePaths = extractImagePaths(descriptionHtml);
-
-      for (const imgPath of imagePaths) {
-        const relativePath = imgPath.startsWith("/")
-          ? imgPath.substring(1) // uploads/1750489502573-description.jpg
-          : imgPath;
-
-        const fullPath = path.join(process.cwd(), relativePath);
-        // equivalent to: project-root/uploads/1750489502573-description.jpg
-
-        console.log("Deleting file:", fullPath);
-
-        if (fs.existsSync(fullPath)) {
-          try {
-            fs.unlinkSync(fullPath);
-            console.log(`Deleted description image: ${fullPath}`);
-          } catch (err) {
-            console.error(`Failed to delete ${fullPath}: ${err.message}`);
-          }
-        } else {
-          console.warn(`File not found for deletion: ${fullPath}`);
+        const res = await fetch(`${CDN_URL}/images/${filename}`, {
+          method: "DELETE",
+        });
+        const data = await res.json();
+        if (!data.success) {
+          console.warn("Failed to delete image from CDN:", imageUrl);
         }
+      } catch (err) {
+        console.warn("Error deleting image from CDN:", imageUrl, err);
       }
-    };
+    });
 
-    // Delete description images first
-    deleteImagesFromDescription(product.description);
-
-    // Prepare product images (thumbnail + images array)
-    const imagePaths = [...(product.images || []), product.thumbnail];
-
-    // Delete product images
-    for (const imgPath of imagePaths) {
-      if (!imgPath) continue;
-
-      // Use basename in case imgPath is a full URL or has folders
-      const fileName = path.basename(imgPath);
-      const filePath = path.join(process.cwd(), "uploads", fileName);
-
-      if (fs.existsSync(filePath)) {
-        try {
-          fs.unlinkSync(filePath);
-          console.log(`Deleted product image: ${filePath}`);
-        } catch (err) {
-          console.error(`Failed to delete ${filePath}: ${err.message}`);
-        }
-      }
-    }
+    await Promise.all(deletePromises);
 
     // Delete product document from DB
     await productModel.findByIdAndDelete(id);
@@ -133,9 +95,12 @@ export async function DELETE(req, { params }) {
       message: "Product and images deleted",
     });
   } catch (error) {
+    console.error("Product DELETE Error:", error);
     return NextResponse.json(
       { success: false, message: error.message },
       { status: 500 }
     );
   }
 }
+
+

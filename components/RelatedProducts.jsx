@@ -1,8 +1,18 @@
 "use client";
 
+import dynamic from "next/dynamic";
+
+// Lazy load ProductCard (client-only)
+const ProductCard = dynamic(() => import("./ProductCard"), {
+  ssr: false,
+  loading: () => (
+    <div className="h-[240px] bg-gray-100 animate-pulse rounded-md" />
+  ),
+});
+
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
-import ProductCard from "./ProductCard";
+import { Suspense } from "react";
 
 export default function RelatedProducts({ categoryId, excludeId }) {
   const fetchRelated = async () => {
@@ -30,7 +40,14 @@ export default function RelatedProducts({ categoryId, excludeId }) {
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
       {relatedProducts?.map((p) => (
-        <ProductCard key={p._id} product={p} />
+        <Suspense
+          key={p._id}
+          fallback={
+            <div className="h-[240px] bg-gray-100 animate-pulse rounded-md" />
+          }
+        >
+          <ProductCard product={p} />
+        </Suspense>
       ))}
     </div>
   );
