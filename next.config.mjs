@@ -4,6 +4,7 @@ const nextConfig = {
     domains: [
       "images.unsplash.com",
       "localhost",
+      "cdn.soulcraftbd.com",
       "soulcraftbd.com",
       "www.soulcraftbd.com",
     ],
