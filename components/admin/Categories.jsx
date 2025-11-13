@@ -40,7 +40,6 @@ useEffect(() => {
   if (cached.length > 0) setPreview(cached[0]);
 }, [CACHE_KEY]);
 
-console.log("preview", preview);
 
 const handleImageChange = async (e) => {
   const file = e.target.files[0];
