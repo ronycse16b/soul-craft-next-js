@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import Container from "./Container";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
+import Link from "next/link";
 
 export default function MusicExperience() {
   const [timeLeft, setTimeLeft] = useState({
@@ -103,7 +104,7 @@ export default function MusicExperience() {
               asChild
               className="bg-rose-600 hover:bg-green-600 text-white px-8 py-6 rounded-full text-lg font-semibold transition-all duration-300"
             >
-              <a href={ad.buttonLink}>{ad.buttonText}</a>
+              <Link href={ad.buttonLink}>{ad.buttonText}</Link>
             </Button>
           </div>
 
@@ -123,86 +124,3 @@ export default function MusicExperience() {
     </Container>
   );
 }
-
-// "use client";
-
-// import { useEffect, useState } from "react";
-// import Image from "next/image";
-// import { Button } from "@/components/ui/button";
-// import Container from "./Container";
-
-// export default function MusicExperience() {
-//   const [timeLeft, setTimeLeft] = useState({
-//     days: 5,
-//     hours: 23,
-//     minutes: 59,
-//     seconds: 35,
-//   });
-
-//   useEffect(() => {
-//     const interval = setInterval(() => {
-//       setTimeLeft((prev) => {
-//         let { days, hours, minutes, seconds } = prev;
-//         if (seconds > 0) seconds--;
-//         else if (minutes > 0) {
-//           seconds = 59;
-//           minutes--;
-//         } else if (hours > 0) {
-//           minutes = 59;
-//           hours--;
-//         } else if (days > 0) {
-//           hours = 23;
-//           days--;
-//         }
-//         return { days, hours, minutes, seconds };
-//       });
-//     }, 1000);
-//     return () => clearInterval(interval);
-//   }, []);
-
-//   return (
-//     <Container className="px-0">
-//       <section className="relative w-full py-16  bg-gradient-to-r from-black via-gray-900 to-gray-800 text-white">
-//         <div className="container mx-auto px-16 flex flex-col lg:flex-row items-center justify-between">
-//           {/* Left Side: Text & Timer */}
-//           <div className="lg:w-1/2 mb-10 lg:mb-0">
-//             <h3 className="text-lg font-semibold text-green-500 uppercase mb-2">
-//               Categories
-//             </h3>
-//             <h2 className="text-xl sm:text-4xl font-bold mb-6 leading-tight">
-//               Enhance Your Music Experience
-//             </h2>
-
-//             {/* Countdown Timer */}
-//             <div className="flex gap-6 mb-8">
-//               {Object.entries(timeLeft).map(([label, value]) => (
-//                 <div key={label} className="text-center bg-white  shadow-destructive rounded-full w-12 h-12  flex flex-col items-center justify-center text-gray-800 shadow-lg">
-//                   <div className="text-sm  text-black font-semibold">
-//                     {String(value).padStart(2, "0")}
-//                   </div>
-//                   <div className="text-[10px]  text-black">{label}</div>
-//                 </div>
-//               ))}
-//             </div>
-
-//             {/* CTA Button */}
-//             <Button className="bg-rose-600 hover:bg-green-600 text-white px-8 py-4 rounded-none  text-lg font-semibold ">
-//               Buy Now!
-//             </Button>
-//           </div>
-
-//           {/* Right Side: Product Image */}
-//           <div className="lg:w-1/2 flex justify-center">
-//             <Image
-//               src="/music.png"
-//               alt="JBL Speaker"
-//               width={400}
-//               height={400}
-//               className="object-contain drop-shadow-xl"
-//             />
-//           </div>
-//         </div>
-//       </section>
-//     </Container>
-//   );
-// }
