@@ -129,7 +129,7 @@ const handleSubmit = async () => {
     setEditMode(false);
     setEditTarget(null);
     setModalOpen(false);
-    // setPreview(null);
+    setPreview(null);
     setError(null);
     setFallbackModalOpen(false);
   };
