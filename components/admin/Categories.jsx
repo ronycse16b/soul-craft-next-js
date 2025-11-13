@@ -83,8 +83,11 @@ const handleSubmit = async () => {
   try {
     setLoading(true);
     const url = editMode
-      ? `${process.env.NEXT_PUBLIC_BASE_URL}/api/sub-categories/${editTarget._id}`
-      : `${process.env.NEXT_PUBLIC_BASE_URL}/api/sub-categories`;
+      ? `${process.env.NEXT_PUBLIC_BASE_URL}/api/${view === 'categories'? 'categories' : 'sub-categories'}/${editTarget._id}`
+      : `${process.env.NEXT_PUBLIC_BASE_URL}/api/${view}`;
+
+
+      
 
     const res = await fetch(url, {
       method: editMode ? "PUT" : "POST",
