@@ -2,7 +2,7 @@ import Container from "@/components/Container";
 import ProductPage from "@/components/ProductPage";
 
 export async function generateMetadata({ params }) {
-  const slug = params.slug;
+  const {slug} = await params;
   const product = await fetchProduct(slug);
 
   if (!product) {
@@ -29,7 +29,7 @@ export async function generateMetadata({ params }) {
       canonical: url,
     },
     openGraph: {
-      type: "product",
+      type: "website",
       title: product.productName,
       description: cleanDescription,
       url,
@@ -62,14 +62,17 @@ async function fetchProduct(slug) {
 }
 
 export default async function ProductDetailsPage({ params }) {
-  const product = await fetchProduct(params.slug);
+
+  const {slug} = await params;
+
+  const product = await fetchProduct(slug);
 
   if (!product) return <p>Product not found</p>;
 
   // Prepare JSON-LD (Google + Meta Catalog)
   const jsonLd = {
     "@context": "https://schema.org/",
-    "@type": "Product",
+    "@type": "website",
     name: product.productName,
     image: product.thumbnail || product.images || [],
     description: product.description?.replace(/<[^>]+>/g, "") || "",

@@ -37,6 +37,7 @@ yarn-error.log*
 .vercel
 # Ignore public generated files like sitemap
 
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
