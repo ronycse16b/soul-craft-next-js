@@ -1,5 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: "standalone",
+
   images: {
     domains: [
       "images.unsplash.com",
@@ -38,6 +40,7 @@ const nextConfig = {
   experimental: {
     optimizeCss: true,
     optimizePackageImports: ["react", "react-dom"],
+    appDir: true,
   },
 };
 
