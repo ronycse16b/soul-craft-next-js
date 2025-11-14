@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
+    "postbuild": "next-sitemap",
     "build": "next build --turbopack",
     "start": "next start"
   },
@@ -39,6 +40,7 @@
     "mongoose": "^8.19.1",
     "next": "15.5.4",
     "next-auth": "^5.0.0-beta.29",
+    "next-sitemap": "^4.2.3",
     "nodemailer": "^6.10.1",
     "quill-image-resize-module-react": "^3.0.0",
     "quill-resize-image": "^1.0.11",

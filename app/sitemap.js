@@ -73,5 +73,5 @@ export default async function sitemap() {
     { url: `${baseUrl}/products`, changeFrequency: "weekly", priority: 0.7 },
   ];
 
-  return [...staticPages, ...categoryUrls, ...subCategoryUrls, ...productUrls];
+  return [...staticPages, ...subCategoryUrls, ...productUrls];
 }
