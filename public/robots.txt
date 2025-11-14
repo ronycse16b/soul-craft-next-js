@@ -1,4 +1,9 @@
+# *
 User-agent: *
 Allow: /
 
+# Host
+Host: https://soulcraftbd.com
+
+# Sitemaps
 Sitemap: https://soulcraftbd.com/sitemap.xml

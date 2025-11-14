@@ -36,7 +36,7 @@ yarn-error.log*
 # vercel
 .vercel
 # Ignore public generated files like sitemap
-# /public/*.xml
+/public/*.xml
 
 # typescript
 *.tsbuildinfo
