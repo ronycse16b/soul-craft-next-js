@@ -84,12 +84,12 @@ export default function CategorySection() {
                     }`}
                   >
                     {/* Image Container with fade */}
-                    <div className="relative w-20 h-20 mt-4 mb-2">
+                    <div className="relative w-20 h-20 mt-4 mb-2 ">
                       <Image
                         src={cat?.image}
                         alt={cat?.name}
                         fill
-                        className="absolute object-contain transition-opacity duration-500"
+                        className="absolute object-contain transition-opacity duration-500 rounded-full"
                       />
                     </div>
 

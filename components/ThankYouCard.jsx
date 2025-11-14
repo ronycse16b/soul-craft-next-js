@@ -19,41 +19,39 @@ export default function ThankYouCard({ orderId, total = 0, itemsCount = 0 }) {
   const router = useRouter();
 
   return (
-    <div className="min-h-[80vh] flex items-center justify-center  px-4 sm:py-10 py-2">
-      <Card className="w-full max-w-md sm:max-w-lg mx-auto   bg-white/90 backdrop-blur-sm rounded-sm shadow-none">
+    <div className="min-h-screen flex items-center justify-center p-1 lg:py-10 bg-gradient-to-b from-green-50 via-white to-white">
+      <Card className="w-full max-w-md sm:max-w-lg bg-white rounded-md  border border-green-100/60 pb-4">
         {/* HEADER */}
-        <CardHeader className="text-center pt-8 pb-3">
-          <div className="mx-auto w-20 h-20 sm:w-24 sm:h-24 rounded-full flex items-center justify-center bg-gradient-to-tr from-white to-green-50 ring-8 ring-green-100 shadow-sm">
-            <CheckCircle className="w-9 h-9 sm:w-10 sm:h-10 text-[#16a34a]" />
+        <CardHeader className="text-center pt-10 pb-4">
+          <div className="w-24 h-24 mx-auto rounded-full bg-green-500 border border-green-200 shadow-inner flex items-center justify-center">
+            <CheckCircle className="w-12 h-12 text-white animate-scaleIn" />
           </div>
 
-          <CardTitle className="mt-5 text-lg sm:text-2xl font-semibold text-[#14532d]">
-            Order Submitted Successfully
+          <CardTitle className="mt-6 text-2xl sm:text-3xl font-bold text-green-700  leading-tight">
+            Thanks for Your Order!
           </CardTitle>
-          <CardDescription className="mt-2 text-xs sm:text-sm text-gray-600 max-w-xs sm:max-w-sm mx-auto leading-relaxed">
-            Thank you for your purchase! We’re processing your order and will
-            notify you once it ships.
+
+          <CardDescription className="mt-2 text-xs md:text-sm text-gray-600 max-w-sm mx-auto">
+            We’re processing your order. You’ll get updates soon.
           </CardDescription>
         </CardHeader>
 
-        {/* CONTENT */}
-        <CardContent className="pt-4 px-5 sm:px-8">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 text-center sm:text-left">
+        {/* SUMMARY */}
+        <CardContent className="px-6 sm:px-8">
+          <div className="flex flex-col text-center gap-3 py-4">
             <div>
-              <p className="text-xs text-gray-500">Order ID</p>
-              <p className="font-medium text-gray-800 text-sm">
+              <p className="text-[11px] text-gray-500">Order Number</p>
+              <p className=" font-bold text-gray-800 text-sm">
                 {orderId ?? "—"}
               </p>
             </div>
-
             <div>
-              <p className="text-xs text-gray-500">Items</p>
+              <p className="text-[11px] text-gray-500">Items</p>
               <p className="font-medium text-gray-800 text-sm">{itemsCount}</p>
             </div>
-
             <div>
-              <p className="text-xs text-gray-500">Total</p>
-              <p className="font-semibold text-[#16a34a] text-sm">
+              <p className="text-[11px] text-gray-500">Total</p>
+              <p className="font-semibold text-green-600 text-sm">
                 ৳ {Number(total).toFixed(2)}
               </p>
             </div>
@@ -61,13 +59,14 @@ export default function ThankYouCard({ orderId, total = 0, itemsCount = 0 }) {
 
           <Separator className="my-5" />
 
-          <div className="bg-gradient-to-r from-green-50 to-green-100 rounded-xl p-3 sm:p-4 border border-green-200/60">
-            <div className="flex flex-col sm:flex-row sm:items-start gap-3">
+          {/* Next Steps Box */}
+          <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 shadow-sm">
+            <div className="flex gap-3">
               <Badge className="bg-green-600 text-white text-[10px] px-2 py-0.5 rounded-md">
-                Next Steps
+                Info
               </Badge>
-              <p className="text-xs sm:text-sm text-gray-700 leading-relaxed">
-                You’ll receive a confirmation email and tracking details once
+              <p className="text-xs text-gray-700 leading-relaxed">
+                We’ll send you a confirmation message with tracking details once
                 your order ships.
               </p>
             </div>
@@ -75,33 +74,31 @@ export default function ThankYouCard({ orderId, total = 0, itemsCount = 0 }) {
         </CardContent>
 
         {/* FOOTER */}
-        <CardFooter className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-stretch justify-between px-5 sm:px-8 py-5 border-t border-green-100/70">
-          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-            <Button
-              variant="outline"
-              className="w-full sm:w-auto text-green-700 border-green-300 hover:bg-green-50 text-sm cursor-pointer"
-              onClick={() => router.push(`/orders/${orderId}`)}
-            >
-              View Order
+        <CardFooter className="flex  gap-4 px-6 pt-4 mt-4 border-t border-green-100">
+          <Button
+            variant="outline"
+            className="w-1/2 text-green-700 border-green-400 cursor-pointer hover:bg-green-50 shadow-sm"
+            onClick={() => router.push(`/orders/${orderId}`)}
+          >
+            View Order
+          </Button>
+
+          <Link href="/shop" className="w-1/2">
+            <Button className="w-full bg-green-600 hover:bg-green-700 text-white shadow-md">
+              Continue Shopping
             </Button>
-
-            <Link href="/" className="w-full sm:w-auto">
-              <Button className="w-full sm:w-auto bg-[#16a34a] hover:bg-[#15803d] text-white text-sm font-medium shadow-sm">
-                Continue Shopping
-              </Button>
-            </Link>
-          </div>
-
-          <div className="mt-3 sm:mt-0 text-center sm:text-right text-xs sm:text-sm text-gray-500">
-            <p>Need help?</p>
-            <Link
-              href="/contact"
-              className="text-green-700 font-semibold hover:underline"
-            >
-              Contact Support
-            </Link>
-          </div>
+          </Link>
         </CardFooter>
+
+        <div className="pt-2 text-center text-[11px] text-gray-500">
+          Need help?{" "}
+          <Link
+            href="/contact"
+            className="text-green-700 underline font-medium"
+          >
+            Contact Support
+          </Link>
+        </div>
       </Card>
     </div>
   );

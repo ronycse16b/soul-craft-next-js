@@ -1,5 +1,5 @@
 "use client";
-
+import { Suspense } from "react";
 import {
   Carousel,
   CarouselContent,
@@ -56,7 +56,6 @@ export default function BannerSlider() {
 
   // ✅ Elegant Spinner Component
 
-
   return (
     <Container className="px-0">
       <div className="flex flex-col lg:flex-row gap-6">
@@ -96,18 +95,20 @@ export default function BannerSlider() {
           >
             <CarouselContent>
               {banners?.map((banner, index) => (
-                <CarouselItem key={`banner-${index}`}>
-                  <div className="relative h-[300px] sm:h-[320px] md:h-[300px] lg:h-[370px] flex items-center justify-center overflow-hidden transition-all duration-500">
-                    <Image
-                      src={banner}
-                      alt={`Banner ${index + 1}`}
-                      fill
-                      priority={index === 0} // Optimize first image load
-                      sizes="(max-width: 768px) 100vw, 50vw"
-                      className="object-cover object-center"
-                    />
-                  </div>
-                </CarouselItem>
+                <Suspense  key={`banner-${index}`}>
+                  <CarouselItem>
+                    <div className="relative h-[300px] sm:h-[320px] md:h-[300px] lg:h-[370px] flex items-center justify-center overflow-hidden transition-all duration-500">
+                      <Image
+                        src={banner}
+                        alt={`Banner ${index + 1}`}
+                        fill
+                        priority={index === 0} // Optimize first image load
+                        sizes="(max-width: 768px) 100vw, 50vw"
+                        className="object-cover object-center"
+                      />
+                    </div>
+                  </CarouselItem>
+                </Suspense>
               ))}
             </CarouselContent>
 

@@ -27,6 +27,40 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { trackAddToCart, trackInitiateCheckout, trackViewContent } from "@/lib/marketingEvents";
 
+
+
+function getFinalPrice(product, variant) {
+  const isSimple = product.type === "simple";
+
+  if (isSimple) {
+    const hasDiscount = product.discount > 0;
+    return hasDiscount ? product.discount : product.price;
+  }
+
+  if (!variant) return 0;
+
+  const hasDiscount = variant.discount > 0;
+  return hasDiscount ? variant.discount : variant.price;
+}
+
+function getComparePrice(product, variant) {
+  const isSimple = product.type === "simple";
+  return isSimple ? product.price : variant?.price;
+}
+
+function getDiscountPercent(product, variant) {
+  const final = getFinalPrice(product, variant);
+  const base = getComparePrice(product, variant);
+
+  if (!base || base <= final) return 0;
+
+  return Math.round(((base - final) / base) * 100);
+}
+
+
+
+
+
 export default function ProductPage({ product }) {
   const cartItems = useSelector((state) => state.cart.items);
   const router = useRouter();
@@ -41,6 +75,9 @@ export default function ProductPage({ product }) {
       ? { ...product, quantity: product.quantity ?? 9999 } // fallback for simple product
       : null
   );
+  const finalPrice = getFinalPrice(product, selectedVariant);
+  const comparePrice = getComparePrice(product, selectedVariant);
+  const percentageOff = getDiscountPercent(product, selectedVariant);
 
   const autoplay = Autoplay({ delay: 3500, stopOnInteraction: false });
 
@@ -56,9 +93,7 @@ export default function ProductPage({ product }) {
       productName: product.productName,
       images: product.thumbnail || product.images?.[0],
       attributes: isSimple ? {} : selectedAttributes,
-      price: isSimple
-        ? discountedPrice || product.price
-        : selectedVariant?.discount ?? selectedVariant?.price,
+      price: finalPrice,
       sku: isSimple ? product.sku : selectedVariant?.sku ?? "",
       quantity,
       variant: isSimple ? null : selectedVariant,
@@ -239,14 +274,12 @@ export default function ProductPage({ product }) {
     setQuantity((prev) => (prev > 1 ? prev - 1 : prev));
   };
 
-  const basePrice = selectedVariant?.price ?? product.price ?? 0;
-  const discountedPrice = selectedVariant?.discount ?? product.discount ?? 0;
-  const percentageOff =
-    discountedPrice && basePrice && discountedPrice < basePrice
-      ? Math.round(((basePrice - discountedPrice) / basePrice) * 100)
-      : 0;
+
+
 
   const dispatch = useDispatch();
+
+
 
   // Add to cart handler
   const handleAddToCart = () => {
@@ -284,17 +317,15 @@ export default function ProductPage({ product }) {
       productName: product.productName,
       images: product.thumbnail || product.images?.[0],
       attributes: isSimple ? {} : selectedAttributes,
-      price: isSimple
-        ? discountedPrice || product.price
-        : selectedVariant?.discount ?? selectedVariant?.price,
+      price: finalPrice,
       sku: isSimple ? product.sku : selectedVariant?.sku ?? "",
       quantity,
       variant: isSimple ? null : selectedVariant,
       availableStock, // 🟢 send stock info to slice
     };
 
+   
     trackAddToCart(payload);
-
     // ✅ Dispatch safely
     dispatch(addToCart(payload));
     toast.success("Added to cart");
@@ -304,9 +335,8 @@ export default function ProductPage({ product }) {
   const handleBuyNow = () => {
     const isSimple = product.type === "simple";
 
-    // For variable products, require variant selection
     if (!isSimple && !selectedVariant) {
-      return toast.error("Select a variant first");
+      return toast.error("Please select variant first");
     }
 
     const cartItem = {
@@ -315,16 +345,12 @@ export default function ProductPage({ product }) {
       images: product.images?.[0] || product.thumbnail,
       quantity,
       attributes: isSimple ? {} : selectedAttributes,
-      price:
-        isSimple && discountedPrice
-          ? discountedPrice || basePrice
-          : product?.price,
+      price: finalPrice,
       sku: isSimple ? product.sku : selectedVariant?.sku ?? "",
       variant: isSimple ? null : selectedVariant,
     };
 
     trackAddToCart(cartItem);
-
     dispatch(buyNow(cartItem));
 
     toast.promise(new Promise((resolve) => setTimeout(resolve, 1000)), {
@@ -376,9 +402,17 @@ Could you tell me more about it?`;
 
   // URL-encode for WhatsApp
   const encodedMessage = encodeURIComponent(whatsAppMessage);
-
   // Example WhatsApp link
   const whatsappLink = `https://wa.me/8801968536050?text=${encodedMessage}`;
+
+  console.log("=== PRICE DEBUG ===");
+  console.log("Type:", product.type);
+  console.log("Variant:", selectedVariant);
+  console.log("Final Price:", finalPrice);
+  console.log("Compare Price:", comparePrice);
+  console.log("Discount %:", percentageOff);
+  console.log("=====================");
+
 
   return (
     <div className="p-1 md:p-6 space-y-8 max-w-7xl mx-auto">
@@ -437,13 +471,13 @@ Could you tell me more about it?`;
           {/* Price Section */}
           <div className="flex items-center gap-4 mt-2">
             <p className="text-3xl font-extrabold text-green-600">
-              BDT {(discountedPrice || basePrice)?.toLocaleString()}
+              BDT {finalPrice?.toLocaleString()}
             </p>
 
-            {discountedPrice > 0 && discountedPrice < basePrice && (
+            {comparePrice > finalPrice && (
               <div className="flex items-center gap-2">
                 <p className="text-gray-400 line-through text-lg">
-                  {basePrice?.toLocaleString()}
+                  BDT {comparePrice?.toLocaleString()}
                 </p>
                 <span className="bg-gradient-to-r from-red-600 to-red-400 text-white font-semibold text-xs px-3 py-1 rounded-full shadow-md">
                   {percentageOff}% OFF
@@ -451,6 +485,7 @@ Could you tell me more about it?`;
               </div>
             )}
           </div>
+
           {/* <pre>{JSON?.stringify(product.attributes)}</pre> */}
 
           {/* Attributes */}

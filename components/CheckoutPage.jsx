@@ -9,15 +9,12 @@ import { useSession } from "next-auth/react";
 import { useForm } from "react-hook-form";
 import { toast } from "react-hot-toast";
 import { Button } from "./ui/button";
-import Swal from "sweetalert2";
-import withReactContent from "sweetalert2-react-content";
 import axios from "axios";
 import { clearCart } from "@/redux/features/cartSlice";
 import { useRouter } from "next/navigation";
-import { useQuery } from "@tanstack/react-query"; // NEW: TanStack Query import
+import { useQuery } from "@tanstack/react-query";
 import Image from "next/image";
 import { trackPurchase } from "@/lib/marketingEvents";
-
 
 const CheckoutPage = () => {
   const router = useRouter();
@@ -27,21 +24,32 @@ const CheckoutPage = () => {
 
   const { register, handleSubmit, setValue, watch } = useForm({
     defaultValues: {
-      firstName: session?.user?.name,
+      firstName: session?.user?.name || "",
       address: "",
       phone: "",
       email: "",
       saveInfo: false,
       coupon: "",
       location: "dhaka",
-      paymentMethod: "",
+      paymentMethod: "cod",
       note: "",
     },
   });
 
-  // NEW: Fetch saved addresses for logged-in users (TanStack v5)
- 
+  const [editingPhone, setEditingPhone] = useState(false);
+  const [latitude, setLatitude] = useState(null);
+  const [longitude, setLongitude] = useState(null);
+  const [orderSuccess, setOrderSuccess] = useState(false);
 
+  const billing = watch();
+
+  const deliveryCharges = {
+    dhaka: 80,
+    nearDhaka: 100,
+    allBangladesh: 130,
+  };
+
+  // Fetch saved addresses
   const { data: savedAddresses } = useQuery({
     queryKey: ["userAddresses", session?.user?.id],
     queryFn: async () => {
@@ -50,10 +58,10 @@ const CheckoutPage = () => {
       );
       return res.data?.addresses || [];
     },
-    enabled: !!session?.user?.id, // only fetch if user is logged in
+    enabled: !!session?.user?.id,
   });
 
-  // Update form values when session loads
+  // Populate user info on load
   useEffect(() => {
     if (session?.user) {
       setValue("firstName", session.user.name || "");
@@ -65,18 +73,13 @@ const CheckoutPage = () => {
         "email",
         session.user.emailOrPhone.includes("@") ? session.user.emailOrPhone : ""
       );
-      // setValue("address", session.user.address || "");
     }
-    if (!cartItems?.length) {
-      router.push("/");
-      return;
-    }
-  }, [session, setValue, cartItems, router]);
 
-  const billing = watch();
-  const [editingPhone, setEditingPhone] = useState(false);
-  const [latitude, setLatitude] = useState(null);
-  const [longitude, setLongitude] = useState(null);
+    // Redirect if cart is empty (but not after success)
+    if (!cartItems?.length && !orderSuccess) {
+      router.push("/");
+    }
+  }, [session, setValue, cartItems, router, orderSuccess]);
 
   // Auto-detect location
   useEffect(() => {
@@ -103,14 +106,7 @@ const CheckoutPage = () => {
     }
   }, [setValue]);
 
-  const deliveryCharges = {
-    dhaka: 80,
-    nearDhaka: 100,
-    allBangladesh: 130,
-  };
-
-  const MySwal = withReactContent(Swal);
-
+  // Handle order submission
   const onSubmit = async (data) => {
     if (!cartItems.length) {
       toast.error("Your cart is empty!");
@@ -138,7 +134,11 @@ const CheckoutPage = () => {
       }));
 
       const responses = await toast.promise(
-        Promise.all(orderPayloads.map((p) => axios.post(`${process.env.NEXT_PUBLIC_BASE_URL}/api/order`, p))),
+        Promise.all(
+          orderPayloads.map((p) =>
+            axios.post(`${process.env.NEXT_PUBLIC_BASE_URL}/api/order`, p)
+          )
+        ),
         {
           loading: "Submitting your order...",
           success: "Order submitted successfully!",
@@ -148,57 +148,18 @@ const CheckoutPage = () => {
 
       const orderData = responses.map((res) => res.data.data);
 
+      // Track purchase event
       trackPurchase(orderData);
 
-      MySwal.fire({
-        title: (
-          <h2 className="text-xl sm:text-2xl font-bold">
-            🎉 Order Placed Successfully!
-          </h2>
-        ),
-        html: (
-          <div className="space-y-3 text-left">
-            {orderData.map((order, idx) => (
-              <div key={idx} className="flex items-center gap-3 border-b pb-2">
-                <img
-                  src={order?.image}
-                  alt={order?.productName}
-                  className="w-16 h-16 object-cover rounded shadow-sm"
-                />
-                <div>
-                  <p className="font-semibold text-sm">{order?.productName}</p>
-                  <p className="text-sm text-gray-600">
-                    Quantity: {order?.qty}
-                  </p>
-                  <p className="text-sm text-gray-600">SKU: {order?.sku}</p>
-                  <p className="text-sm font-medium text-green-600">
-                    Total: {order?.total} BDT
-                  </p>
-                  <p className="text-xs text-gray-400">
-                    Order #: {order?.orderNumber}
-                  </p>
-                </div>
-              </div>
-            ))}
-            <div className="mt-3 font-bold text-right text-lg">
-              Grand Total: {orderData?.reduce((acc, o) => acc + o.total, 0)} BDT
-            </div>
-          </div>
-        ),
-        icon: "success",
-        confirmButtonText: "Continue Shopping",
-        width: "500px",
-        customClass: {
-          popup: "p-2",
-          confirmButton:
-            "bg-[#f69224] hover:bg-[#e07b1c] text-white px-4 py-2 rounded shadow",
-        },
-      }).then((result) => {
-        dispatch(clearCart());
-        if (result.isDismissed || result.isConfirmed) {
-          router.push("/");
-        }
-      });
+      // Redirect to order success
+      setOrderSuccess(true);
+      const firstOrder = orderData[0];
+      await router.push(
+        `/order-success?orderId=${firstOrder?.orderNumber}&total=${firstOrder.total}&items=${cartItems.length}`
+      );
+
+      // Clear cart after redirect
+      dispatch(clearCart());
     } catch (err) {
       console.error(err);
       toast.error(err.response?.data?.message || "Failed to submit order");
@@ -229,20 +190,17 @@ const CheckoutPage = () => {
               className="w-full border px-4 py-2 rounded focus:outline-none focus:ring-2 focus:ring-[#f69224]"
             />
 
-            {/* ------------------- Address Section ------------------- */}
+            {/* Address Section */}
             <div className="">
               <label className="font-medium text-sm mb-1 block">
                 Delivery Address
               </label>
-
-              {/* Editable Textarea for address */}
               <Textarea
                 {...register("address", { required: true })}
                 placeholder="Street Address*"
                 className="w-full border px-4 py-2 rounded focus:outline-none focus:ring-2 focus:ring-[#f69224]"
               />
 
-              {/* Saved Addresses as suggestions */}
               {session?.user && savedAddresses?.length > 0 && (
                 <div className="mt-2 text-sm text-gray-700">
                   <p className="font-medium mb-1">
@@ -256,10 +214,7 @@ const CheckoutPage = () => {
                         onClick={() =>
                           setValue("address", addr.deliveryAddress)
                         }
-                        className="text-left p-3 bg-yellow-100 border rounded-md cursor-pointer transition
-                       hover:bg-yellow-100 hover:border-yellow-400
-                       focus:bg-yellow-200 focus:border-yellow-500
-                       min-h-[50px]"
+                        className="text-left p-3 bg-yellow-100 border rounded-md cursor-pointer transition hover:bg-yellow-100 hover:border-yellow-400 focus:bg-yellow-200 focus:border-yellow-500 min-h-[50px]"
                       >
                         <p className="font-medium">{addr.deliveryAddress}</p>
                         <span className="text-xs text-gray-500">
@@ -272,6 +227,7 @@ const CheckoutPage = () => {
               )}
             </div>
 
+            {/* Phone input */}
             {session?.user?.phone && !editingPhone ? (
               <div className="flex flex-col gap-1">
                 <div className="flex items-center gap-2">
@@ -302,6 +258,7 @@ const CheckoutPage = () => {
               />
             )}
 
+            {/* Email input */}
             {session?.user?.email && (
               <input
                 type="email"
@@ -311,12 +268,11 @@ const CheckoutPage = () => {
               />
             )}
 
-            {/* ------------------- Delivery Location ------------------- */}
+            {/* Delivery Location */}
             <div className="mt-6">
               <h3 className="font-semibold text-lg mb-3">
                 Delivery Charge & Location
               </h3>
-
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {[
                   { loc: "dhaka", label: "Inside Dhaka City (80 Tk)" },
@@ -326,12 +282,12 @@ const CheckoutPage = () => {
                   <label
                     key={item.loc}
                     className={`flex items-center gap-2 p-3 rounded-lg border cursor-pointer transition
-                    hover:bg-yellow-100 hover:border-yellow-400
-                    ${
-                      watch("location") === item.loc
-                        ? "bg-yellow-200 border-yellow-400"
-                        : "bg-yellow-50 border-transparent"
-                    }`}
+                      hover:bg-yellow-100 hover:border-yellow-400
+                      ${
+                        watch("location") === item.loc
+                          ? "bg-yellow-200 border-yellow-400"
+                          : "bg-yellow-50 border-transparent"
+                      }`}
                   >
                     <input
                       type="radio"
@@ -379,7 +335,7 @@ const CheckoutPage = () => {
               Review your order and proceed to payment.
             </div>
 
-            <div className="border p-5  space-y-5 flex-1 bg-white">
+            <div className="border p-5 space-y-5 flex-1 bg-white">
               {/* Cart Items */}
               {cartItems?.map((item, idx) => (
                 <div
@@ -389,7 +345,7 @@ const CheckoutPage = () => {
                   <Image
                     src={item.images}
                     alt={item.productName}
-                    className="w-14 h-14 object-cover  border"
+                    className="w-14 h-14 object-cover border"
                     height={44}
                     width={44}
                   />
@@ -402,7 +358,7 @@ const CheckoutPage = () => {
                 </div>
               ))}
 
-              {/* Subtotal */}
+              {/* Subtotal & Total */}
               <div className="flex justify-between border-t pt-3 font-medium text-gray-700">
                 <span>SKU</span>
                 <span>{cartItems?.map((item) => item?.sku).join(", ")}</span>
@@ -417,14 +373,10 @@ const CheckoutPage = () => {
                   BDT
                 </span>
               </div>
-
-              {/* Delivery Charge */}
               <div className="flex justify-between text-gray-700">
                 <span>Delivery Charge</span>
                 <span>{deliveryCharges[billing.location] || 0} BDT</span>
               </div>
-
-              {/* Total */}
               <div className="flex justify-between font-bold text-lg border-t pt-3 text-gray-800">
                 <span>Total</span>
                 <span>
@@ -436,7 +388,7 @@ const CheckoutPage = () => {
                 </span>
               </div>
 
-              {/* Payment Option */}
+              {/* Payment */}
               <div className="mt-4 p-4 border rounded-xl bg-yellow-50 flex items-center gap-3">
                 <input
                   type="radio"
