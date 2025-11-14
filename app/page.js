@@ -7,23 +7,21 @@ import FeatureInfo from "@/components/FeatureInfo";
 import FlashSale from "@/components/FlashSale";
 import MusicExperience from "@/components/MusicExperience";
 import NewArrivals from "@/components/NewArrivals";
-
+import OurStorySection from "@/components/OurStorySection";
 
 export default function Home() {
   return (
     <div>
-      
-        <BannerSlider/>
-        <FlashSale/>
-        <CategorySection/>
-        <BestSellingProducts/>
-        <MusicExperience/>
-        <ExploreProducts/>
-        <NewArrivals/>
-        <FeatureInfo/>
+      <BannerSlider />
+      <FlashSale />
+      <CategorySection />
+      <BestSellingProducts />
+      <MusicExperience />
+      <ExploreProducts />
+      <NewArrivals />
+      <FeatureInfo />
 
-
-     
+      <OurStorySection />
     </div>
   );
 }

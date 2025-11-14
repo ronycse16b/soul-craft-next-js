@@ -1,5 +1,6 @@
 // new arrival product fetch only 
 
+import { connectDB } from "@/lib/db.config";
 import productModel from "@/models/product.model";
 import { NextResponse } from "next/server";
 export async function GET() {

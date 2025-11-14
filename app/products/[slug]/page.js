@@ -1,102 +1,116 @@
 import Container from "@/components/Container";
 import ProductPage from "@/components/ProductPage";
-import React from "react";
-import Head from "next/head";
 
-export default async function page({ params }) {
-  const { slug } = await params;
-  const singleData = await fetchProduct(slug);
+export async function generateMetadata({ params }) {
+  const slug = params.slug;
+  const product = await fetchProduct(slug);
 
-  const product = singleData?.product || null;
-
-  async function fetchProduct(slug) {
-    const res = await fetch(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/api/products/${slug}`,
-      {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-        cache: "no-store",
-      }
-    );
-    return res.json();
+  if (!product) {
+    return {
+      title: "Product Not Found",
+    };
   }
+
+  const cleanDescription =
+    product.description?.replace(/<[^>]+>/g, "")?.slice(0, 160) ||
+    "Buy high-quality products from Soul Craft.";
+
+  const ogImage =
+    product.thumbnail ||
+    product.images?.[0] ||
+    "https://soulcraftbd.com/og-image.jpg";
+
+  const url = `${process.env.NEXT_PUBLIC_BASE_URL}/products/${product.slug}`;
+
+  return {
+    title: `${product.productName} | Soul Craft`,
+    description: cleanDescription,
+    alternates: {
+      canonical: url,
+    },
+    openGraph: {
+      type: "product",
+      title: product.productName,
+      description: cleanDescription,
+      url,
+      siteName: "Soul Craft",
+      images: [
+        {
+          url: ogImage,
+          width: 1200,
+          height: 630,
+          alt: product.productName,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: product.productName,
+      description: cleanDescription,
+      images: [ogImage],
+    },
+  };
+}
+
+async function fetchProduct(slug) {
+  const res = await fetch(
+    `${process.env.NEXT_PUBLIC_BASE_URL}/api/products/${slug}`,
+    { cache: "no-store" }
+  );
+  const data = await res.json();
+  return data?.product || null;
+}
+
+export default async function ProductDetailsPage({ params }) {
+  const product = await fetchProduct(params.slug);
 
   if (!product) return <p>Product not found</p>;
 
-  // Prepare JSON-LD for product
+  // Prepare JSON-LD (Google + Meta Catalog)
   const jsonLd = {
     "@context": "https://schema.org/",
     "@type": "Product",
     name: product.productName,
-    image: product.thumbnail || [],
+    image: product.thumbnail || product.images || [],
     description: product.description?.replace(/<[^>]+>/g, "") || "",
     sku: product.sku || product.variants?.[0]?.sku,
     brand: {
       "@type": "Brand",
-      name: product.brand || "Unknown Brand",
+      name: product.brand || "Soul Craft",
     },
-    stock: product.stock > 0 ? "InStock" : "OutOfStock",
+    aggregateRating:
+      product.numReviews > 0
+        ? {
+            "@type": "AggregateRating",
+            ratingValue: product.averageRating,
+            reviewCount: product.numReviews,
+          }
+        : undefined,
     offers: {
       "@type": "Offer",
       url: `${process.env.NEXT_PUBLIC_BASE_URL}/products/${product.slug}`,
       priceCurrency: "BDT",
       price:
-        product.type === "variant" ? product.variants[0]?.price : product.price,
-      availability: "https://schema.org/InStock",
+        product.type === "simple"
+          ? product.price
+          : product.variants?.[0]?.price,
+      availability:
+        product.quantity > 0 || product.variants?.some((v) => v.quantity > 0)
+          ? "https://schema.org/InStock"
+          : "https://schema.org/OutOfStock",
     },
   };
 
   return (
     <Container className="px-1">
-      <Head>
-        {/* Basic SEO */}
-        <title>{product.productName} | My Store</title>
-        <meta
-          name="description"
-          content={product.description?.replace(/<[^>]+>/g, "") || ""}
-        />
-        <meta
-          name="keywords"
-          content={product.subCategory?.name || product.category || "products"}
-        />
-        <meta name="robots" content="index, follow" />
+      {/* Inject JSON-LD */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(jsonLd),
+        }}
+      ></script>
 
-        {/* OpenGraph */}
-        <meta property="og:type" content="product" />
-        <meta property="og:title" content={product.productName} />
-        <meta
-          property="og:description"
-          content={product.description?.replace(/<[^>]+>/g, "") || ""}
-        />
-        <meta
-          property="og:image"
-          content={product.images?.[0] || "/placeholder.png"}
-        />
-        <meta
-          property="og:url"
-          content={`${process.env.NEXT_PUBLIC_BASE_URL}/products/${product.slug}`}
-        />
-
-        {/* Twitter Card */}
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content={product.productName} />
-        <meta
-          name="twitter:description"
-          content={product.description?.replace(/<[^>]+>/g, "") || ""}
-        />
-        <meta
-          name="twitter:image"
-          content={product.images?.[0] || "/placeholder.png"}
-        />
-
-        {/* JSON-LD */}
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-        />
-      </Head>
-
-      {/* Render ProductPage with product prop */}
       <ProductPage product={product} />
     </Container>
   );

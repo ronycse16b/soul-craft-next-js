@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+
+# Disallow sensitive areas
+Disallow: /admin/
+Disallow: /dashboard/
+Disallow: /api/
+
+# Sitemap location
+Sitemap: https://soulcraftbd.com/sitemap.xml

@@ -21,7 +21,7 @@ export const metadata = {
     siteName: "Soul Craft",
     images: [
       {
-        url: "https://soulcraftbd.com/og-image.jpg",
+        url: "https://soulcraftbd.com/og-image.png",
         width: 1200,
         height: 630,
         alt: "Soul Craft - Trendy Clothing & Accessories",

@@ -11,6 +11,7 @@ import { Toaster } from "react-hot-toast";
 import { Provider } from "react-redux";
 import { PersistGate } from "redux-persist/integration/react";
 import { persistor, store } from "@/redux/store/store";
+import WhatsAppFloatingButton from "./WhatsAppFloatingButton";
 
 
 export default function HeaderFooterWrapper({ children }) {
@@ -29,6 +30,7 @@ export default function HeaderFooterWrapper({ children }) {
           <main className="min-h-screen">
             {children}
             <Toaster position="top-right" reverseOrder={false} />
+            <WhatsAppFloatingButton/>
           </main>
 
           {!hideLayout && (
