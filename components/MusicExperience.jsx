@@ -73,7 +73,7 @@ export default function MusicExperience() {
   // 🎨 UI
   return (
     <Container className="px-0 mb-8">
-      <section className="relative w-full py-16 bg-gradient-to-r from-black via-gray-900 to-gray-800 text-white overflow-hidden">
+      <section className="relative w-full py-16 bg-gradient-to-r from-black via-red-900 to-red-800 text-white overflow-hidden">
         <div className="container mx-auto px-8 lg:px-16 flex flex-col lg:flex-row items-center justify-between gap-10">
           {/* Left Side */}
           <div className="lg:w-1/2 space-y-6">

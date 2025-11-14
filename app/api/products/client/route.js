@@ -1,4 +1,6 @@
+import { connectDB } from "@/lib/db.config";
 import ProductModel from "@/models/product.model";
+import SubCategory from "@/models/SubCategory";
 
 
 
@@ -28,7 +30,7 @@ export async function GET(req) {
         // Automatically pulls the parent category
     }).sort({ createdAt: -1 })
       .skip(skip)
-      .limit(limit);
+      .limit(limit).select('productName brand price sku slug quantity images discount flashSale type variants thumbnail');
 
     return new Response(
       JSON.stringify({

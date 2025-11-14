@@ -1,10 +1,10 @@
 import Container from "@/components/Container";
 import ProductListView from "@/components/ProductListView";
 
-export const metadata = {
-  title: "Shop by Category",
-  description: "Browse products by category in our shop.",
-};
+export const metadata = ({ params }) => ({
+  title: `${params.slug} – Buy Now`,
+  description: `Explore best ${params.slug} products at the best price.`,
+});
 
 export default async function page({ params }) {
 
