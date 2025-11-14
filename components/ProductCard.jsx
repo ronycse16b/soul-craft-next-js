@@ -14,14 +14,14 @@ export default function ProductCard({ product }) {
 
   // Variants & stock
   const availableVariants =
-    product.type === "variant"
-      ? product.variants?.filter((v) => v.quantity > 0) || []
-      : product.quantity > 0
+    product?.type === "variant"
+      ? product?.variants?.filter((v) => v.quantity > 0) || []
+      : product?.quantity > 0
       ? [
           {
-            price: product.price,
-            discount: product.discount || 0,
-            quantity: product.quantity,
+            price: product?.price,
+            discount: product?.discount || 0,
+            quantity: product?.quantity,
           },
         ]
       : [];
@@ -31,11 +31,11 @@ export default function ProductCard({ product }) {
   // Price calculations
   const minPrice = availableVariants.length
     ? Math.min(...availableVariants.map((v) => v.price))
-    : product.price || 0;
+    : product?.price || 0;
 
   const discountPrice = availableVariants.length
     ? Math.max(...availableVariants.map((v) => v.discount || 0))
-    : product.discount || 0;
+    : product?.discount || 0;
 
   const discountPercent = discountPrice
     ? Math.round(((minPrice - discountPrice) / minPrice) * 100)
@@ -44,7 +44,7 @@ export default function ProductCard({ product }) {
   // Variant summary
 
   return (
-    <Link href={`/products/${product.slug}`}>
+    <Link href={`/products/${product?.slug}`}>
       <div
         className="w-full max-w-[300px] sm:max-w-[260px] md:max-w-[220px] lg:max-w-[240px] mx-auto rounded overflow-hidden shadow-md hover:shadow-xl transition-shadow duration-500 cursor-pointer"
         onMouseEnter={() => setHovered(true)}
@@ -54,7 +54,7 @@ export default function ProductCard({ product }) {
         <div className="relative overflow-hidden">
           <Image
             src={mainImage}
-            alt={product.productName}
+            alt={product?.productName}
             width={300}
             height={300}
             sizes="(max-width: 640px) 160px, (max-width: 1024px) 220px, 240px"
@@ -75,7 +75,7 @@ export default function ProductCard({ product }) {
           )}
 
           {/* New Arrival badge */}
-          {product.newArrival && (
+          {product?.newArrival && (
             <div className="absolute top-2 right-2 bg-green-500 text-white px-2 py-1 rounded-md text-xs font-medium">
               New
             </div>
@@ -86,7 +86,7 @@ export default function ProductCard({ product }) {
         <div className="">
           <div className="p-3">
             <h3 className="text-sm sm:text-xs font-semibold line-clamp-2 truncate">
-              {product.productName}
+              {product?.productName}
             </h3>
 
             {/* Price */}
@@ -102,7 +102,7 @@ export default function ProductCard({ product }) {
             </div>
           </div>
           {/* Buy Now button */}
-          <Link href={`/products/${product.slug}`}>
+          <Link href={`/products/${product?.slug}`}>
             <Button
               className={`mt-3 w-full text-white  font-semibold py-2 rounded-none ${
                 !inStock ? "opacity-50 cursor-not-allowed" : ""

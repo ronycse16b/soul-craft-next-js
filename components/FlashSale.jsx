@@ -137,7 +137,7 @@ export default function FlashSale() {
                   return (
                     <SwiperSlide>
                       <Suspense
-                        key={productId._id}
+                        key={productId?._id}
                         fallback={
                           <div className="h-[240px] bg-gray-100 animate-pulse rounded-md" />
                         }
