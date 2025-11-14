@@ -66,8 +66,11 @@ export async function GET(req) {
 
 // ✅ POST: Create new user
 export async function POST(req) {
-  const auth = await adminOnlyMiddleware(req);
-  if (auth) return auth;
+ const auth = await verifyAccess(req, {
+   roles: ["admin"],
+   permission: "create",
+ });
+ if (auth instanceof Response) return auth;
   try {
     await connectDB();
     const { name, emailOrPhone, password, role, permissions, image } =

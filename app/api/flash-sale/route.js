@@ -77,8 +77,12 @@ export async function POST(req) {
 
 // ================= UPDATE FLASH SALE =================
 export async function PUT(req) {
-  const auth = await adminOnlyMiddleware(req);
-  if (auth) return auth;
+    
+   const auth = await verifyAccess(req, {
+     roles: ["admin", "moderator"],
+     permission: "update",
+   });
+   if (auth instanceof Response) return auth;
 
   try {
     await connectDB();
@@ -145,8 +149,11 @@ export async function PUT(req) {
 
 // ================= DELETE FLASH SALE =================
 export async function DELETE(req) {
-  const auth = await adminOnlyMiddleware(req);
-  if (auth) return auth;
+   const auth = await verifyAccess(req, {
+     roles: ["admin", "moderator"],
+     permission: "delete",
+   });
+   if (auth instanceof Response) return auth;
 
   try {
     await connectDB();

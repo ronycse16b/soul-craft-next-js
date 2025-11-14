@@ -1,10 +1,16 @@
 
 import { connectDB } from "@/lib/db.config";
+import { verifyAccess } from "@/lib/roleMiddleware";
 import flashModel from "@/models/flash.model";
 import { NextResponse } from "next/server";
 
 // ✅ Update Flash Sale
 export async function PUT(req, { params }) {
+   const auth = await verifyAccess(req, {
+     roles: ["admin", "moderator"],
+     permission: "update",
+   });
+   if (auth instanceof Response) return auth;
   try {
     await connectDB();
     const { id } = await params;
@@ -21,6 +27,13 @@ export async function PUT(req, { params }) {
 
 // ✅ Delete Flash Sale
 export async function DELETE(req, { params }) {
+
+   const auth = await verifyAccess(req, {
+     roles: ["admin", "moderator"],
+     permission: "delete",
+   });
+   if (auth instanceof Response) return auth;
+
   try {
     await connectDB();
     const { id } = await params;

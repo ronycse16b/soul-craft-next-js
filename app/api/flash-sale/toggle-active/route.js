@@ -5,8 +5,11 @@ import { NextResponse } from "next/server";
 
 // ✅ Toggle Flash Sale Active State
 export async function POST(req) {
-  const auth = await adminOnlyMiddleware(req);
-  if (auth) return auth;
+ const auth = await verifyAccess(req, {
+     roles: ["admin", "moderator"],
+     permission: "create",
+   });
+  if (auth instanceof Response) return auth;
   try {
     await connectDB();
 

@@ -109,7 +109,7 @@ export async function GET(req) {
 export async function PUT(req) {
  const auth = await verifyAccess(req, {
        roles: ["admin", "moderator"],
-       permission: "create",
+       permission: "update",
      });
      if (auth instanceof Response) return auth;
 
@@ -150,12 +150,8 @@ export async function PUT(req) {
 
 
 
-export async function POST_delete(req) {
- const auth = await verifyAccess(req, {
-       roles: ["admin", "moderator"],
-       permission: "create",
-     });
-     if (auth instanceof Response) return auth;
+export async function DELETE(req) {
+
   try {
     const { subId, fallbackId } = await req.json();
 

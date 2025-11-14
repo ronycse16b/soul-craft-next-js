@@ -10,7 +10,7 @@ import { verifyAccess } from "@/lib/roleMiddleware";
 export async function PUT(req, { params }) {
      const auth = await verifyAccess(req, {
        roles: ["admin", "moderator"],
-       permission: "read",
+       permission: "update",
      });
      if (auth instanceof Response) return auth;
   await connectDB();
