@@ -1,18 +1,21 @@
 import Container from "@/components/Container";
 import ProductListView from "@/components/ProductListView";
 
-export const metadata = ({ params }) => ({
-  title: `${params.slug} – Buy Now`,
-  description: `Explore best ${params.slug} products at the best price.`,
-});
+// Dynamic metadata based on category slug
+export async function generateMetadata({ params }) {
+  const { category } = await params;
+  return {
+    title: `${category} – Buy Now`,
+    description: `Explore the best ${category} products at the best price.`,
+  };
+}
 
-export default async function page({ params }) {
-
-  const {category: slug} = await params;
+export default async function Page({ params }) {
+  const { category } = await params;
 
   return (
     <Container>
-      <ProductListView slug={slug} />
+      <ProductListView slug={category} />
     </Container>
   );
 }
