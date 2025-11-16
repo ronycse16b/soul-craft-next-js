@@ -2,7 +2,7 @@ import Container from "@/components/Container";
 import ProductListView from "@/components/ProductListView";
 
 // Dynamic metadata based on category slug
-export async function generateMetadata({ params }) {
+export async function generateMetadata({ params }) { 
   const { category } = await params;
   return {
     title: `${category} – Buy Now`,

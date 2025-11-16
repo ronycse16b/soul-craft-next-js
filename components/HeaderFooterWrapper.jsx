@@ -12,6 +12,10 @@ import { Provider } from "react-redux";
 import { PersistGate } from "redux-persist/integration/react";
 import { persistor, store } from "@/redux/store/store";
 import WhatsAppFloatingButton from "./WhatsAppFloatingButton";
+import AOS from "aos";
+import "aos/dist/aos.css"; // You can also use <link> for styles
+// ..
+AOS.init();
 
 
 export default function HeaderFooterWrapper({ children }) {
@@ -28,9 +32,10 @@ export default function HeaderFooterWrapper({ children }) {
           {!hideLayout && <Header />}
 
           <main className="min-h-screen">
+            
             {children}
-            <Toaster position="top-right" reverseOrder={false} />
-            <WhatsAppFloatingButton/>
+            <Toaster  reverseOrder={false} />
+            <WhatsAppFloatingButton />
           </main>
 
           {!hideLayout && (

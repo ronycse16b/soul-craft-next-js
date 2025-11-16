@@ -5,6 +5,8 @@ import MarketingManager from "@/components/marketing/MarketingManager";
 import CookieConsent from "@/components/marketing/CookieConsent";
 import Script from "next/script";
 
+
+
 export const metadata = {
   title: {
     template: "%s | Soul Craft",
