@@ -39,11 +39,15 @@ export default function CategorySection() {
  
 
   return (
-    <section className="sm:py-10 py-4 bg-white">
+    <section
+      data-aos="fade-up"
+      data-aos-duration="1000"
+      className="sm:py-10 py-4 bg-white"
+    >
       <Container>
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-md sm:text-2xl font-bold uppercase text-black">
+          <h2 className="text-md sm:text-2xl font-bold uppercase text-black drop-shadow-2xl">
             Browse By Category
           </h2>
           <div className="flex gap-2">
@@ -67,8 +71,6 @@ export default function CategorySection() {
           <div className="flex gap-4">
             {categories?.map((cat) => {
               const isSelected = selected === cat.name;
-              
-            
 
               return (
                 <Link key={cat._id || cat.name} href={`/shop/${cat.slug}`}>

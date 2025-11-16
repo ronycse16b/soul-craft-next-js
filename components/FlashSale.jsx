@@ -90,7 +90,7 @@ export default function FlashSale() {
       {activeSale && (
         <>
           {/* Header */}
-          <div className="mb-8">
+          <div data-aos="fade-up" data-aos-duration="1000" className="mb-8">
             <div className="flex flex-col sm:flex-row sm:justify-between justify-center items-center gap-6 w-full mb-6">
               <div>
                 <h3 className="text-[#f69224] font-semibold text-lg">

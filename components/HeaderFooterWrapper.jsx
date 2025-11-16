@@ -13,15 +13,6 @@ import { PersistGate } from "redux-persist/integration/react";
 import { persistor, store } from "@/redux/store/store";
 import WhatsAppFloatingButton from "./WhatsAppFloatingButton";
 
-
-import dynamic from "next/dynamic";
-
-// Lazy load ProductCard (client-only)
-const AOSInit = dynamic(() => import("./animation/AOSInit"), {ssr: false});
-
-
-
-
 export default function HeaderFooterWrapper({ children }) {
   const pathname = usePathname();
 
@@ -31,14 +22,17 @@ export default function HeaderFooterWrapper({ children }) {
 
   return (
     <Provider store={store}>
+
       <PersistGate loading={null} persistor={persistor}>
+        
+
         <AuthProviders>
           {!hideLayout && <Header />}
 
           <main className="min-h-screen">
             
             {children}
-            <AOSInit />
+           
             <Toaster  reverseOrder={false} />
             <WhatsAppFloatingButton />
           </main>
@@ -50,6 +44,7 @@ export default function HeaderFooterWrapper({ children }) {
             </>
           )}
         </AuthProviders>
+        
       </PersistGate>
     </Provider>
   );

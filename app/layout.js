@@ -4,8 +4,7 @@ import TanstackProvider from "@/TanstackProvider";
 import MarketingManager from "@/components/marketing/MarketingManager";
 import CookieConsent from "@/components/marketing/CookieConsent";
 import Script from "next/script";
-
-
+import AOSProvider from "@/components/animation/AOSProvider";
 
 export const metadata = {
   title: {
@@ -57,9 +56,11 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <body className="font-poppins antialiased">
-        <TanstackProvider>
-          <HeaderFooterWrapper>{children}</HeaderFooterWrapper>
-        </TanstackProvider>
+        <AOSProvider>
+          <TanstackProvider>
+            <HeaderFooterWrapper>{children}</HeaderFooterWrapper>
+          </TanstackProvider>
+        </AOSProvider>
 
         {/* Marketing & Tracking Scripts */}
         <MarketingManager />

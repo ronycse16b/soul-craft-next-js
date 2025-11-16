@@ -95,9 +95,9 @@ export default function BannerSlider() {
           >
             <CarouselContent>
               {banners?.map((banner, index) => (
-                <Suspense  key={`banner-${index}`}>
+                <Suspense key={`banner-${index}`}>
                   <CarouselItem>
-                    <div className="relative h-[300px] sm:h-[320px] md:h-[300px] lg:h-[370px] flex items-center justify-center overflow-hidden transition-all duration-500">
+                    <div className="relative h-[300px] sm:h-[320px] md:h-[300px] lg:h-[430px] flex items-center justify-center overflow-hidden transition-all duration-500">
                       <Image
                         src={banner}
                         alt={`Banner ${index + 1}`}

@@ -25,13 +25,24 @@ export default function NewArrivals() {
   return (
     <Container className="w-full py-12 px-3 sm:px-8 bg-white">
       {/* Section Title */}
-      <div className="flex items-center gap-2 mb-2">
+      <div
+        className="flex items-center gap-2 mb-2"
+        data-aos="fade-right"
+        data-aos-delay="0"
+      >
         <span className="w-2 h-2 rounded-full bg-[#f44]" />
         <span className="text-sm font-semibold text-[#f44] uppercase">
           Featured
         </span>
       </div>
-      <h2 className="text-xl sm:text-2xl font-bold mb-8">New Arrival</h2>
+
+      <h2
+        className="text-xl sm:text-2xl font-bold mb-8"
+        data-aos="fade-up"
+        data-aos-delay="100"
+      >
+        New Arrival
+      </h2>
 
       {/* Grid Layout */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-auto md:h-[500px]">
@@ -40,6 +51,8 @@ export default function NewArrivals() {
           <Link
             href={`/products/${main.slug}`}
             className="relative md:col-span-2 overflow-hidden group h-[250px] sm:h-[350px] md:h-full rounded block"
+            data-aos="zoom-in"
+            data-aos-delay="200"
           >
             <Image
               src={main.thumbnail}
@@ -66,6 +79,8 @@ export default function NewArrivals() {
             <Link
               href={`/products/${topRight.slug}`}
               className="relative overflow-hidden group h-[200px] sm:h-[250px] md:h-[50%] rounded block"
+              data-aos="fade-left"
+              data-aos-delay="300"
             >
               <Image
                 src={topRight.thumbnail}
@@ -94,6 +109,8 @@ export default function NewArrivals() {
                     key={i}
                     href={`/products/${item.slug}`}
                     className="relative overflow-hidden group rounded block"
+                    data-aos={i % 2 === 0 ? "fade-up" : "fade-down"}
+                    data-aos-delay={400 + i * 100} // staggered delay
                   >
                     <Image
                       src={item.thumbnail}

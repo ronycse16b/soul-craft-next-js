@@ -61,7 +61,10 @@ export default function BestSellingProducts() {
           </Link>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-6">
+        <div
+         
+          className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-6"
+        >
           {products?.slice(0, limit)?.map((product) => (
             <Suspense
               key={product._id}

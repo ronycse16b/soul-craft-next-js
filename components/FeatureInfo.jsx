@@ -6,9 +6,13 @@ import Container from "./Container";
 export default function FeatureInfo() {
   return (
     <Container className="w-full py-10 px-4 sm:px-8 bg-white">
-      <div className="grid grid-cols-1 md:grid-cols-3 border border-gray-200 rounded-md">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 border border-gray-200 rounded-md">
         {/* Item 1 */}
-        <div className="flex flex-col items-center justify-center text-center p-6 border-b md:border-b-0 md:border-r border-gray-200">
+        <div
+          className="flex flex-col items-center text-center p-6 border-b md:border-b-0 md:border-r border-gray-200 hover:shadow-lg transition-shadow rounded-md"
+          data-aos="fade-up"
+          data-aos-delay="400"
+        >
           <div className="w-14 h-14 rounded-full bg-destructive flex items-center justify-center mb-4">
             <Truck className="text-white w-6 h-6" />
           </div>
@@ -21,7 +25,11 @@ export default function FeatureInfo() {
         </div>
 
         {/* Item 2 */}
-        <div className="flex flex-col items-center justify-center text-center p-6 border-b md:border-b-0 md:border-r border-gray-200">
+        <div
+          className="flex flex-col items-center text-center p-6 border-b md:border-b-0 md:border-r border-gray-200 hover:shadow-lg transition-shadow rounded-md"
+          data-aos="fade-up"
+          data-aos-delay="500"
+        >
           <div className="w-14 h-14 rounded-full bg-destructive flex items-center justify-center mb-4">
             <Headphones className="text-white w-6 h-6" />
           </div>
@@ -34,7 +42,11 @@ export default function FeatureInfo() {
         </div>
 
         {/* Item 3 */}
-        <div className="flex flex-col items-center justify-center text-center p-6">
+        <div
+          className="flex flex-col items-center text-center p-6 hover:shadow-lg transition-shadow rounded-md"
+          data-aos="fade-up"
+          data-aos-delay="600"
+        >
           <div className="w-14 h-14 rounded-full bg-destructive flex items-center justify-center mb-4">
             <ShieldCheck className="text-white w-6 h-6" />
           </div>

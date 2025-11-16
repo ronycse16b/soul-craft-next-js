@@ -12,96 +12,18 @@ import OurStorySection from "@/components/OurStorySection";
 
 export default function Home() {
   return (
-    <div className="space-y-14">
-      {/* HERO BANNER (fade-down) */}
-      <div
-        data-aos="fade-down"
-        data-aos-offset="120"
-        data-aos-duration="700"
-        data-aos-easing="ease-out"
-      >
-        <BannerSlider />
-      </div>
-
-      {/* FLASH SALE (fade-right) */}
-      <div
-        data-aos="fade-right"
-        data-aos-offset="150"
-        data-aos-duration="700"
-        data-aos-easing="ease-in-sine"
-      >
+    <div className="">
+      {/* HERO (Subtle fade) */}
+      <BannerSlider />
         <FlashSale />
-      </div>
-
-      {/* CATEGORY SECTION (fade-left) */}
-      <div
-        data-aos="fade-left"
-        data-aos-offset="150"
-        data-aos-duration="700"
-        data-aos-easing="ease-in-sine"
-      >
         <CategorySection />
-      </div>
-
-      {/* BEST SELLING PRODUCTS (zoom-in) */}
-      <div
-        data-aos="zoom-in"
-        data-aos-offset="180"
-        data-aos-duration="700"
-        data-aos-easing="ease-out"
-      >
+        
         <BestSellingProducts />
-      </div>
-
-      {/* MUSIC EXPERIENCE (fade-right) */}
-      <div
-        data-aos="fade-right"
-        data-aos-offset="200"
-        data-aos-duration="700"
-        data-aos-easing="ease-in"
-      >
         <MusicExperience />
-      </div>
-
-      {/* EXPLORE PRODUCTS (fade-up) */}
-      <div
-        data-aos="fade-up"
-        data-aos-offset="180"
-        data-aos-duration="700"
-        data-aos-easing="ease-out"
-      >
         <ExploreProducts />
-      </div>
-
-      {/* NEW ARRIVALS (fade-left) */}
-      <div
-        data-aos="fade-left"
-        data-aos-offset="180"
-        data-aos-duration="700"
-        data-aos-easing="ease-out"
-      >
         <NewArrivals />
-      </div>
-
-      {/* FEATURE INFO (zoom-in) */}
-      <div
-        data-aos="zoom-in"
-        data-aos-offset="150"
-        data-aos-duration="700"
-        data-aos-easing="ease-in"
-      >
         <FeatureInfo />
-      </div>
-
-      {/* OUR STORY (fade-up) */}
-      <div
-        data-aos="fade-up"
-        data-aos-offset="150"
-        data-aos-duration="700"
-        data-aos-easing="ease-out"
-      >
         <OurStorySection />
-      </div>
     </div>
   );
 }

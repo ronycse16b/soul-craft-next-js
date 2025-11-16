@@ -76,7 +76,12 @@ export default function MusicExperience() {
       <section className="relative w-full py-16 bg-gradient-to-r from-black via-red-900 to-red-800 text-white overflow-hidden">
         <div className="container mx-auto px-8 lg:px-16 flex flex-col lg:flex-row items-center justify-between gap-10">
           {/* Left Side */}
-          <div className="lg:w-1/2 space-y-6">
+          <div
+            data-aos="fade-right"
+            data-aos-offset="300"
+            data-aos-easing="ease-in-sine"
+            className="lg:w-1/2 space-y-6"
+          >
             <h3 className="text-lg font-semibold text-green-500 uppercase">
               {ad?.title || "Categories"}
             </h3>
@@ -109,7 +114,13 @@ export default function MusicExperience() {
           </div>
 
           {/* Right Side */}
-          <div className="lg:w-1/2 flex justify-center">
+          <div
+            data-aos="fade-left"
+            data-aos-anchor="#example-anchor"
+            data-aos-offset="500"
+            data-aos-duration="500"
+            className="lg:w-1/2 flex justify-center"
+          >
             <Image
               src={ad.image}
               alt={ad.title}
