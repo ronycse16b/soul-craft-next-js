@@ -12,10 +12,14 @@ import { Provider } from "react-redux";
 import { PersistGate } from "redux-persist/integration/react";
 import { persistor, store } from "@/redux/store/store";
 import WhatsAppFloatingButton from "./WhatsAppFloatingButton";
-import AOS from "aos";
-import "aos/dist/aos.css"; // You can also use <link> for styles
-// ..
-AOS.init();
+
+
+import dynamic from "next/dynamic";
+
+// Lazy load ProductCard (client-only)
+const AOSInit = dynamic(() => import("./animation/AOSInit"), {ssr: false});
+
+
 
 
 export default function HeaderFooterWrapper({ children }) {
@@ -34,6 +38,7 @@ export default function HeaderFooterWrapper({ children }) {
           <main className="min-h-screen">
             
             {children}
+            <AOSInit />
             <Toaster  reverseOrder={false} />
             <WhatsAppFloatingButton />
           </main>
