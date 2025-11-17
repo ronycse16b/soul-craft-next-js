@@ -40,6 +40,8 @@ const CheckoutPage = () => {
   const [latitude, setLatitude] = useState(null);
   const [longitude, setLongitude] = useState(null);
   const [orderSuccess, setOrderSuccess] = useState(false);
+  const isEmail = /\S+@\S+\.\S+/.test(session?.user?.emailOrPhone);
+
 
   const billing = watch();
 
@@ -130,7 +132,7 @@ const CheckoutPage = () => {
         image: item.images || "",
         note: data.note || "",
         statusHistory: [{ status: "Processing", note: "Order placed" }],
-        email: session?.user?.emailOrPhone,
+        email: session?.user?.emailOrPhone || data?.phone,
       }));
 
       const responses = await toast.promise(
@@ -172,17 +174,17 @@ const CheckoutPage = () => {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           {/* LEFT SIDE */}
           <div className="lg:col-span-8 flex flex-col gap-6">
-            <h2 className="text-2xl font-bold flex items-center gap-2">
-              <Truck className="text-[#f69224]" size={24} /> Billing Details
+            <h2 className="text-xl font-bold flex items-center gap-2">
+              <Truck className="text-[#f69224]" size={24} /> Billing & Shipping Address
             </h2>
 
-            <div className="p-4 bg-yellow-50 border-l-4 border-yellow-400 text-sm rounded shadow-sm">
+            {/* <div className="p-4 bg-yellow-50 border-l-4 border-yellow-400 text-sm rounded shadow-sm">
               You are logged in using:{" "}
               <span className="font-semibold text-[#f69224]">
                 {session?.user?.emailOrPhone.includes("@") ? "Email" : "Phone"}
               </span>
               . Please confirm your billing details.
-            </div>
+            </div> */}
 
             <input
               {...register("firstName", { required: true })}
@@ -192,13 +194,13 @@ const CheckoutPage = () => {
 
             {/* Address Section */}
             <div className="">
-              <label className="font-medium text-sm mb-1 block">
+              {/* <label className="font-medium text-sm mb-1 block">
                 Delivery Address
-              </label>
+              </label> */}
               <Textarea
                 {...register("address", { required: true })}
-                placeholder="Street Address*"
-                className="w-full border px-4 py-2 rounded focus:outline-none focus:ring-2 focus:ring-[#f69224]"
+                placeholder="Full Address / Street Address*"
+                className="w-full border px-4 py-2 rounded-none focus:outline-none focus:ring-2 focus:ring-[#f69224]"
               />
 
               {session?.user && savedAddresses?.length > 0 && (
@@ -270,9 +272,7 @@ const CheckoutPage = () => {
 
             {/* Delivery Location */}
             <div className="mt-6">
-              <h3 className="font-semibold text-lg mb-3">
-                Delivery Charge & Location
-              </h3>
+              <h3 className="font-semibold text-lg mb-3">Delivery Charge</h3>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {[
                   { loc: "dhaka", label: "Inside Dhaka City (80 Tk)" },
@@ -281,11 +281,11 @@ const CheckoutPage = () => {
                 ].map((item) => (
                   <label
                     key={item.loc}
-                    className={`flex items-center gap-2 p-3 rounded-lg border cursor-pointer transition
+                    className={`flex items-center gap-2 p-3  border cursor-pointer transition
                       hover:bg-yellow-100 hover:border-yellow-400
                       ${
                         watch("location") === item.loc
-                          ? "bg-yellow-200 border-yellow-400"
+                          ? "bg-yellow-100 border-yellow-400"
                           : "bg-yellow-50 border-transparent"
                       }`}
                   >
@@ -300,7 +300,7 @@ const CheckoutPage = () => {
                 ))}
               </div>
 
-              {latitude && longitude && (
+              {/* {latitude && longitude && (
                 <div className="mt-4 rounded-lg overflow-hidden shadow-sm border">
                   <iframe
                     title="Delivery Location"
@@ -310,23 +310,23 @@ const CheckoutPage = () => {
                     src={`https://maps.google.com/maps?q=${latitude},${longitude}&z=15&output=embed`}
                   />
                 </div>
-              )}
+              )} */}
             </div>
 
-            <label className="flex items-center gap-2 text-sm mt-4">
+            {/* <label className="flex items-center gap-2 text-sm mt-4">
               <input
                 type="checkbox"
                 {...register("saveInfo")}
                 className="accent-[#f69224]"
               />
               Save this information for faster checkout next time
-            </label>
+            </label> */}
 
-            <Textarea
+            {/* <Textarea
               {...register("note")}
               placeholder="Order Note (Optional)"
               className="w-full border px-4 py-2 rounded focus:outline-none focus:ring-2 focus:ring-[#f69224] mt-4"
-            />
+            /> */}
           </div>
 
           {/* RIGHT SIDE */}
@@ -335,7 +335,7 @@ const CheckoutPage = () => {
               Review your order and proceed to payment.
             </div>
 
-            <div className="border p-5 space-y-5 flex-1 bg-white">
+            <div className="border p-5  flex-1 bg-gray-50 rounded ">
               {/* Cart Items */}
               {cartItems?.map((item, idx) => (
                 <div
@@ -389,7 +389,7 @@ const CheckoutPage = () => {
               </div>
 
               {/* Payment */}
-              <div className="mt-4 p-4 border rounded-xl bg-yellow-50 flex items-center gap-3">
+              <div className="mt-4 p-4 border rounded-full bg-green-200 flex items-center gap-3">
                 <input
                   type="radio"
                   value="cod"
@@ -423,9 +423,17 @@ const CheckoutPage = () => {
               {/* Place Order Button */}
               <Button
                 type="submit"
-                className="w-full mt-6 py-6 bg-destructive hover:bg-destructive/80 text-white shadow-lg font-semibold rounded-lg flex items-center justify-center gap-2 transition-all duration-300"
+                className="w-full mt-6 py-6 bg-destructive uppercase rounded-full hover:bg-destructive/80 text-white shadow-lg font-semibold  flex items-center justify-center gap-2 transition-all duration-300"
               >
-                <Truck size={20} /> Place Order (COD)
+                <Truck size={20} /> Place Order (
+                <span>
+                  {cartItems.reduce(
+                    (acc, item) => acc + item.price * item.quantity,
+                    0
+                  ) + (deliveryCharges[billing.location] || 0)}{" "}
+                  BDT
+                </span>
+                )
               </Button>
             </div>
           </div>

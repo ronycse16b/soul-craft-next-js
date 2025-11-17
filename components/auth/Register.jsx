@@ -22,9 +22,6 @@ export default function Register() {
     formState: { errors, isSubmitting },
   } = useForm();
 
-  const emailOrPhone = watch("emailOrPhone");
-
-  // Bangladesh Mobile Number Regex (starts with 01 + 9 more digits)
   const bdMobileRegex = /^01[3-9]\d{8}$/;
 
   const onSubmit = async (data) => {
@@ -35,11 +32,14 @@ export default function Register() {
     };
 
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/auth/sign-up`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/auth/sign-up`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        }
+      );
 
       const response = await res.json();
 
@@ -56,45 +56,62 @@ export default function Register() {
   };
 
   return (
-    <section className="w-full sm:py-12 sm:my-10 py-4 bg-white">
-      <Container className="flex flex-col-reverse md:flex-row items-center gap-10">
-        {/* Left Side */}
-        <div className="flex justify-center w-full md:w-1/2">
-          <Image
-            src="/auth.png"
-            alt="E-commerce Illustration"
-            width={500}
-            height={500}
-            className="object-contain"
-          />
-        </div>
+    <section className="w-full min-h-[80vh] bg-gradient-to-t from-white to-gray-100 flex items-center sm:py-10">
+      <Container className="w-full flex flex-col-reverse md:flex-row justify-between items-center gap-10 px-1">
+        {/* Left Image with beautiful shape */}
+        {/* Left Image */}
+               <div className="flex justify-center w-full md:w-1/2">
+                 <Image
+                   src="/auth.png"
+                   alt="Login Illustration"
+                   width={480}
+                   height={480}
+                   className="object-contain drop-shadow-lg"
+                 />
+               </div>
 
-        {/* Right Side */}
-        <div className="w-full md:w-1/2 max-w-md mx-auto">
-          <h2 className="text-2xl font-bold mb-2">Create an account</h2>
-          <p className="text-sm text-gray-600 mb-6">Enter your details below</p>
+        {/* Register Box */}
+        <div className="w-full max-w-md bg-white md:rounded-md shadow-black md:shadow-2xl p-8">
+          <h2 className="text-3xl font-bold text-gray-800 mb-2 tracking-tight">
+            Create an Account
+          </h2>
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-            {/* Name */}
+          <p className="text-sm text-gray-600 mb-6">
+            Join <span className="text-primary font-semibold">Soul Craft</span>
+          </p>
 
-            {error && <p className="text-red-500 text-sm bg-red-50 px-3 py-2 animate-pulse ">{error}</p>}
-            <div>
+          {/* Error */}
+          {error && (
+            <p className="text-sm text-red-600 bg-red-100 p-2 rounded mb-3 font-medium shadow-sm animate-pulse">
+              {error}
+            </p>
+          )}
+
+          <form className="space-y-5" onSubmit={handleSubmit(onSubmit)}>
+            {/* Full Name */}
+            <div className="flex flex-col space-y-1">
+              <label className="text-gray-700 text-sm font-medium">
+                Full Name
+              </label>
               <input
                 type="text"
-                placeholder="Full Name"
+                placeholder="Enter your full name"
                 {...register("name", { required: "Name is required" })}
-                className="w-full border-b px-3 border-gray-300 focus:outline-none focus:border-[#f69224] py-2"
+                className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:border-primary focus:outline-none transition"
               />
               {errors.name && (
-                <p className="text-red-500 text-sm">{errors?.name?.message}</p>
+                <p className="text-xs text-red-500">{errors.name.message}</p>
               )}
             </div>
 
             {/* Email / Mobile */}
-            <div className="flex items-center gap-3">
+            <div className="flex flex-col space-y-1">
+              <label className="text-gray-700 text-sm font-medium">
+                Email / Mobile
+              </label>
               <input
                 type={isMobile ? "tel" : "email"}
-                placeholder={isMobile ? "Mobile Number" : "Email"}
+                placeholder={isMobile ? "Mobile Number" : "Email Address"}
                 {...register("emailOrPhone", {
                   required: "This field is required",
                   validate: (value) =>
@@ -103,21 +120,21 @@ export default function Register() {
                         "Invalid Bangladeshi mobile number"
                       : /\S+@\S+\.\S+/.test(value) || "Invalid email address",
                 })}
-                className="flex-1 border-b px-3 border-gray-300 focus:outline-none focus:border-[#f69224] py-2"
+                className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:border-primary focus:outline-none transition"
               />
+              {errors.emailOrPhone && (
+                <p className="text-xs text-red-500">
+                  {errors.emailOrPhone.message}
+                </p>
+              )}
             </div>
-            {errors.emailOrPhone && (
-              <p className="text-red-500 text-sm">
-                {errors.emailOrPhone.message}
-              </p>
-            )}
 
-            {/* Checkbox for switching */}
+            {/* Switch Checkbox */}
             <div className="flex items-center gap-2">
               <input
                 type="checkbox"
                 id="mobileCheckbox"
-                className="w-4 h-4 accent-[#f69224]"
+                className="w-4 h-4 accent-primary"
                 onChange={() => setIsMobile(!isMobile)}
               />
               <label
@@ -129,10 +146,13 @@ export default function Register() {
             </div>
 
             {/* Password */}
-            <div>
+            <div className="flex flex-col space-y-1">
+              <label className="text-gray-700 text-sm font-medium">
+                Password
+              </label>
               <input
                 type="password"
-                placeholder="Password"
+                placeholder="Enter your password"
                 {...register("password", {
                   required: "Password is required",
                   minLength: {
@@ -140,40 +160,41 @@ export default function Register() {
                     message: "Password must be at least 6 characters",
                   },
                 })}
-                className="w-full border-b px-3 border-gray-300 focus:outline-none focus:border-[#f69224] py-2"
+                className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:border-primary focus:outline-none transition"
               />
               {errors.password && (
-                <p className="text-red-500 text-sm">
+                <p className="text-xs text-red-500">
                   {errors.password.message}
                 </p>
               )}
             </div>
 
-            {/* Submit */}
+            {/* Register Button */}
             <Button
               type="submit"
               disabled={isSubmitting}
-              className="w-full bg-red-500 hover:bg-red-600 text-white font-semibold rounded-none"
+              className="w-full py-2 rounded-lg bg-primary hover:bg-primary/90 text-white font-semibold shadow-md"
             >
               {isSubmitting ? "Creating Account..." : "Create Account"}
             </Button>
 
-            {/* Google Signup */}
+            {/* Google Login */}
             <Button
               type="button"
               variant="outline"
-              className="w-full flex justify-center items-center gap-2 rounded-none cursor-pointer"
+              className="w-full flex items-center justify-center gap-2 border-gray-300 py-2 rounded-lg shadow-sm hover:bg-gray-50"
             >
               <Image src="/google.png" alt="Google" width={20} height={20} />
               Sign up with Google
             </Button>
           </form>
 
-          <p className="text-sm text-center mt-6">
+          {/* Footer */}
+          <p className="text-center text-sm mt-6 text-gray-600">
             Already have an account?{" "}
             <Link
               href="/auth/sign-in"
-              className="text-[#f69224] font-medium hover:underline"
+              className="text-primary font-semibold hover:underline"
             >
               Sign in now
             </Link>

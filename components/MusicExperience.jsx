@@ -27,7 +27,8 @@ export default function MusicExperience() {
       const res = await axios.get(`${process.env.NEXT_PUBLIC_BASE_URL}/api/advertisement/client`);
       return res.data;
     },
-    staleTime: 1000 * 60 * 5, // cache for 5 minutes
+    staleTime: 1000 * 60 * 5, // cache for 5 
+    keepPreviousData: true,
   });
 
   const ad = ads?.[0]; // Only one active ad to show
@@ -107,7 +108,7 @@ export default function MusicExperience() {
             {/* Button */}
             <Button
               asChild
-              className="bg-rose-600 hover:bg-green-600 text-white px-8 py-6 rounded-full text-lg font-semibold transition-all duration-300"
+              className="bg-destructive hover:bg-destructive/80 shadow-lg text-white px-8 py-6 rounded-full text-lg font-semibold transition-all duration-300"
             >
               <Link href={ad.buttonLink}>{ad.buttonText}</Link>
             </Button>

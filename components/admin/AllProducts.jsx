@@ -40,6 +40,7 @@ const AllProducts = () => {
     queryFn: fetchProducts,
     keepPreviousData: true,
     staleTime: 1000 * 60,
+    cacheTime: 1000 * 60 * 30,
   });
 
   const products = data?.result || [];
@@ -213,234 +214,227 @@ const AllProducts = () => {
           </p>
         ) : (
           <>
-            {loading ? (
-              <div className="min-h-[60vh] flex justify-center items-center">
-                <PacmanLoader color="red" />
-              </div>
-            ) : (
-              <div className="overflow-x-auto w-full relative">
-                <table className="min-w-[1000px] table w-full text-sm text-gray-700 whitespace-nowrap rounded overflow-hidden shadow-md">
-                  <thead className="bg-gray-50  text-gray-700 uppercase ">
-                    <tr className="py-6">
-                      {[
-                        "#",
-                        "Image",
-                        "Name",
-                        "Type",
-                        "SKU",
-                        "Base Price",
-                        "Discount",
-                        "Stock",
-                        "Actions",
-                      ].map((h, i) => (
-                        <th
-                          key={i}
-                          className="px-3 py-2 border font-medium text-left"
-                        >
-                          {h}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
+            <div className="overflow-x-auto w-full relative">
+              {loading &&  <span>Processing...</span>}
+              <table className="min-w-[1000px] table w-full text-sm text-gray-700 whitespace-nowrap rounded overflow-hidden shadow-md">
+                <thead className="bg-gray-50  text-gray-700 uppercase ">
+                  <tr className="py-6">
+                    {[
+                      "#",
+                      "Image",
+                      "Name",
+                      "Type",
+                      "SKU",
+                      "Base Price",
+                      "Discount",
+                      "Stock",
+                      "Actions",
+                    ].map((h, i) => (
+                      <th
+                        key={i}
+                        className="px-3 py-2 border font-medium text-left"
+                      >
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
 
-                  <tbody className="divide-y divide-gray-200">
-                    {products.map((item, index) => {
-                      const id = item._id ?? index;
-                      const isOpen = expanded.has(id);
+                <tbody className="divide-y divide-gray-200">
+                  {products.map((item, index) => {
+                    const id = item._id ?? index;
+                    const isOpen = expanded.has(id);
 
-                      return (
-                        <Fragment key={id}>
-                          {/* ======================= MAIN PRODUCT ROW ======================= */}
-                          <tr className="hover:bg-gray-50 transition duration-200">
-                            <td className="px-3 py-1 border text-center">
-                              {index + 1}
-                            </td>
+                    return (
+                      <Fragment key={id}>
+                        {/* ======================= MAIN PRODUCT ROW ======================= */}
+                        <tr className="hover:bg-gray-50 transition duration-200">
+                          <td className="px-3 py-1 border text-center">
+                            {index + 1}
+                          </td>
 
-                            <td className="px-3 py-1 border">
-                              <img
-                                src={item.thumbnail}
-                                className="w-10 h-10 object-cover rounded-md border shadow-sm"
-                                alt="product"
-                              />
-                            </td>
+                          <td className="px-3 py-1 border">
+                            <img
+                              src={item.thumbnail}
+                              className="w-10 h-10 object-cover rounded-md border shadow-sm"
+                              alt="product"
+                            />
+                          </td>
 
-                            <td className="px-3 py-1 border font-medium text-gray-800 truncate max-w-[160px]">
-                              {item.productName}
-                            </td>
+                          <td className="px-3 py-1 border font-medium text-gray-800 truncate max-w-[160px]">
+                            {item.productName}
+                          </td>
 
-                            <td className="px-3 py-1 border capitalize">
-                              {item.type}
-                            </td>
-                            <td className="px-3 py-1 border">
-                              {item.sku || "--"}
-                            </td>
+                          <td className="px-3 py-1 border capitalize">
+                            {item.type}
+                          </td>
+                          <td className="px-3 py-1 border">
+                            {item.sku || "--"}
+                          </td>
 
-                            <td className="px-3 py-1 border font-semibold text-gray-800">
-                              ৳ {item.price || "--"}
-                            </td>
+                          <td className="px-3 py-1 border font-semibold text-gray-800">
+                            ৳ {item.price || "--"}
+                          </td>
 
-                            <td className="px-3 py-1 border text-green-600">
-                              {item.discount ? `৳ ${item.discount}` : "--"}
-                            </td>
+                          <td className="px-3 py-1 border text-green-600">
+                            {item.discount ? `৳ ${item.discount}` : "--"}
+                          </td>
 
-                            <td className="px-3 py-1 border text-center">
-                              {item.type === "variant"
-                                ? item.variants?.reduce(
-                                    (a, v) => a + v.quantity,
-                                    0
-                                  )
-                                : item.quantity}
-                            </td>
+                          <td className="px-3 py-1 border text-center">
+                            {item.type === "variant"
+                              ? item.variants?.reduce(
+                                  (a, v) => a + v.quantity,
+                                  0
+                                )
+                              : item.quantity}
+                          </td>
 
-                            <td className="px-3 py-1 border text-center flex flex-wrap gap-1 justify-center">
-                              {item.type === "variant" &&
-                                item.variants?.length > 0 && (
-                                  <button
-                                    type="button"
-                                    onClick={() => toggle(id)}
-                                    aria-expanded={isOpen}
-                                    className="inline-flex items-center gap-1 px-2 py-1 rounded-md hover:bg-gray-100 transition text-xs"
-                                  >
-                                    Details{" "}
-                                    <ChevronDown
-                                      size={15}
-                                      className={`transform transition-transform duration-300 ${
-                                        isOpen ? "rotate-180" : "rotate-0"
-                                      }`}
-                                    />
-                                  </button>
-                                )}
-
-                              <FeatureControl product={item} />
-
-                              <Link
-                                href={`/dashboard/product-update/${item.slug}`}
-                              >
-                                <Button className="bg-gradient-to-r from-sky-500 to-sky-700 text-white h-7 px-2 text-xs rounded-md hover:scale-105 transition">
-                                  <Edit className="w-3 h-3 mr-1" /> Edit
-                                </Button>
-                              </Link>
-
-                              <Button
-                                onClick={() =>
-                                  toggleProductField(item._id, "newArrival")
-                                }
-                                className={`h-7 px-2 text-xs text-white rounded-md ${
-                                  item.newArrival
-                                    ? "bg-yellow-500 hover:bg-yellow-600"
-                                    : "bg-yellow-600 hover:bg-yellow-700"
-                                }`}
-                              >
-                                {item.newArrival ? "Remove New" : "Mark New"}
-                              </Button>
-
-                              <Button
-                                onClick={() =>
-                                  toggleProductField(item._id, "isActive")
-                                }
-                                className={`h-7 px-2 text-xs text-white rounded-md ${
-                                  item.isActive
-                                    ? "bg-green-500 hover:bg-green-600"
-                                    : "bg-gray-400 hover:bg-gray-500"
-                                }`}
-                              >
-                                {item.isActive ? "Active" : "Inactive"}
-                              </Button>
-
-                              <Button
-                                onClick={() => handleDelete(item._id)}
-                                className="h-7 px-2 text-xs bg-red-500 text-white rounded-md hover:bg-red-600"
-                              >
-                                <Trash className="w-3 h-3 mr-1" /> Delete
-                              </Button>
-                            </td>
-                          </tr>
-
-                          {/* ======================= VARIANT ROW ======================= */}
-                          {item.type === "variant" &&
-                            item.variants?.length > 0 && (
-                              <tr>
-                                <td colSpan={10} className="p-0 bg-gray-50">
-                                  <div
-                                    className={`transition-all duration-500 ease-in-out overflow-hidden ${
-                                      isOpen
-                                        ? "max-h-[500px] p-2"
-                                        : "max-h-0 p-0"
+                          <td className="px-3 py-1 border text-center flex flex-wrap gap-1 justify-center">
+                            {item.type === "variant" &&
+                              item.variants?.length > 0 && (
+                                <button
+                                  type="button"
+                                  onClick={() => toggle(id)}
+                                  aria-expanded={isOpen}
+                                  className="inline-flex items-center gap-1 px-2 py-1 rounded-md hover:bg-gray-100 transition text-xs"
+                                >
+                                  Details{" "}
+                                  <ChevronDown
+                                    size={15}
+                                    className={`transform transition-transform duration-300 ${
+                                      isOpen ? "rotate-180" : "rotate-0"
                                     }`}
-                                  >
-                                    <div className="overflow-x-auto">
-                                      <table className="min-w-[500px] w-full text-xs border border-gray-200 rounded-md">
-                                        <thead className="bg-gray-200 text-gray-700 uppercase text-[10px]">
-                                          <tr>
-                                            {[
-                                              "Variant",
-                                              "SKU",
-                                              "Price",
-                                              "Qty",
-                                              "Discount",
-                                            ].map((v, i) => (
-                                              <th
-                                                key={i}
-                                                className="px-2 py-1 border"
-                                              >
-                                                {v}
-                                              </th>
-                                            ))}
-                                          </tr>
-                                        </thead>
+                                  />
+                                </button>
+                              )}
 
-                                        <tbody>
-                                          {item.variants.map((v, i) => (
-                                            <tr
+                            <FeatureControl product={item} />
+
+                            <Link
+                              href={`/dashboard/product-update/${item.slug}`}
+                            >
+                              <Button className="bg-gradient-to-r from-sky-500 to-sky-700 text-white h-7 px-2 text-xs rounded-md hover:scale-105 transition">
+                                <Edit className="w-3 h-3 mr-1" /> Edit
+                              </Button>
+                            </Link>
+
+                            <Button
+                              onClick={() =>
+                                toggleProductField(item._id, "newArrival")
+                              }
+                              className={`h-7 px-2 text-xs text-white rounded-md ${
+                                item.newArrival
+                                  ? "bg-yellow-500 hover:bg-yellow-600"
+                                  : "bg-yellow-600 hover:bg-yellow-700"
+                              }`}
+                            >
+                              {item.newArrival ? "Remove New" : "Mark New"}
+                            </Button>
+
+                            <Button
+                              onClick={() =>
+                                toggleProductField(item._id, "isActive")
+                              }
+                              className={`h-7 px-2 text-xs text-white rounded-md ${
+                                item.isActive
+                                  ? "bg-green-500 hover:bg-green-600"
+                                  : "bg-gray-400 hover:bg-gray-500"
+                              }`}
+                            >
+                              {item.isActive ? "Active" : "Inactive"}
+                            </Button>
+
+                            <Button
+                              onClick={() => handleDelete(item._id)}
+                              className="h-7 px-2 text-xs bg-red-500 text-white rounded-md hover:bg-red-600"
+                            >
+                              <Trash className="w-3 h-3 mr-1" /> Delete
+                            </Button>
+                          </td>
+                        </tr>
+
+                        {/* ======================= VARIANT ROW ======================= */}
+                        {item.type === "variant" &&
+                          item.variants?.length > 0 && (
+                            <tr>
+                              <td colSpan={10} className="p-0 bg-gray-50">
+                                <div
+                                  className={`transition-all duration-500 ease-in-out overflow-hidden ${
+                                    isOpen ? "max-h-[500px] p-2" : "max-h-0 p-0"
+                                  }`}
+                                >
+                                  <div className="overflow-x-auto">
+                                    <table className="min-w-[500px] w-full text-xs border border-gray-200 rounded-md">
+                                      <thead className="bg-gray-200 text-gray-700 uppercase text-[10px]">
+                                        <tr>
+                                          {[
+                                            "Variant",
+                                            "SKU",
+                                            "Price",
+                                            "Qty",
+                                            "Discount",
+                                          ].map((v, i) => (
+                                            <th
                                               key={i}
-                                              className="hover:bg-gray-100 transition text-[13px]"
+                                              className="px-2 py-1 border"
                                             >
-                                              <td className="px-2 py-1 border">
-                                                {Object.entries(
-                                                  v.attributes || {}
-                                                )
-                                                  .map(
-                                                    ([k, val]) => `${k}: ${val}`
-                                                  )
-                                                  .join(", ")}
-                                              </td>
-
-                                              <td className="px-2 py-1 border">
-                                                {v.sku}
-                                              </td>
-
-                                              <td className="px-2 py-1 border font-semibold text-gray-800">
-                                                ৳ {v.price}
-                                              </td>
-
-                                              <td className="px-2 py-1 border">
-                                                {v.quantity}
-                                                {v.quantity < 5 && (
-                                                  <span className="ml-1 text-red-500 text-[10px] font-medium">
-                                                    (Low)
-                                                  </span>
-                                                )}
-                                              </td>
-
-                                              <td className="px-2 py-1 border">
-                                                {v.discount || 0}
-                                              </td>
-                                            </tr>
+                                              {v}
+                                            </th>
                                           ))}
-                                        </tbody>
-                                      </table>
-                                    </div>
+                                        </tr>
+                                      </thead>
+
+                                      <tbody>
+                                        {item.variants.map((v, i) => (
+                                          <tr
+                                            key={i}
+                                            className="hover:bg-gray-100 transition text-[13px]"
+                                          >
+                                            <td className="px-2 py-1 border">
+                                              {Object.entries(
+                                                v.attributes || {}
+                                              )
+                                                .map(
+                                                  ([k, val]) => `${k}: ${val}`
+                                                )
+                                                .join(", ")}
+                                            </td>
+
+                                            <td className="px-2 py-1 border">
+                                              {v.sku}
+                                            </td>
+
+                                            <td className="px-2 py-1 border font-semibold text-gray-800">
+                                              ৳ {v.price}
+                                            </td>
+
+                                            <td className="px-2 py-1 border">
+                                              {v.quantity}
+                                              {v.quantity < 5 && (
+                                                <span className="ml-1 text-red-500 text-[10px] font-medium">
+                                                  (Low)
+                                                </span>
+                                              )}
+                                            </td>
+
+                                            <td className="px-2 py-1 border">
+                                              {v.discount || 0}
+                                            </td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
                                   </div>
-                                </td>
-                              </tr>
-                            )}
-                        </Fragment>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                      </Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
 
             {/* ======================= PAGINATION ======================= */}
             <div className="flex justify-center sm:justify-end mt-6 gap-2 flex-wrap text-xs">

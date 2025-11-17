@@ -19,6 +19,7 @@ import {
   Shield,
   LockKeyhole,
   Home,
+  ChevronRight,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -38,13 +39,34 @@ import { DropdownMenuSeparator } from "@radix-ui/react-dropdown-menu";
 import { useSelector } from "react-redux";
 import CartIconButton from "./CartIconButton";
 import ProductSearchBar from "./ProductSearchBar";
+import { useQuery } from "@tanstack/react-query";
 
 export default function Header() {
   const { data: session } = useSession();
+  const [activeTab, setActiveTab] = useState("categories");
 
   const user = session?.user;
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+
+    // ✅ Fetch dynamic categories
+    const {
+      data: categories = [],
+      isLoading: isCategoryLoading,
+      isError: isCategoryError,
+    } = useQuery({
+      queryKey: ["categories"],
+      queryFn: async () => {
+        const { data } = await axios.get(
+          `${process.env.NEXT_PUBLIC_BASE_URL}/api/categories/client`
+        );
+  
+        return data?.result || [];
+      },
+      staleTime: 1000 * 60 * 5,
+      cacheTime: 1000 * 60 * 30,
+      keepPreviousData: true,
+    });
 
   const navLinks = [
     { name: "Home", href: "/" },
@@ -266,28 +288,116 @@ export default function Header() {
 
                 <SheetContent
                   side="left"
-                  className="w-[80%] sm:w-[300px] p-6 bg-white"
+                  className="w-[85%] sm:w-[330px] p-0 bg-white shadow-xl border-r border-gray-200"
                 >
-                  <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-lg font-bold">Menu</h2>
+                  {/* WRAPPER CARD */}
+                  <div className="h-full flex flex-col bg-gradient-to-b from-white to-gray-50">
+                    {/* HEADER SECTION */}
+                    <div className="p-5 border-b bg-white flex flex-col gap-1 shadow-sm">
+                      <Link href="/" className="flex items-center gap-2">
+                        <Image
+                          src={Logo}
+                          alt="Soul Craft Logo"
+                          width={130}
+                          height={60}
+                          priority
+                          className="object-contain"
+                        />
+                      </Link>
+                      <p className="text-xs text-gray-500 italic">
+                        Premium Online Shopping Experience
+                      </p>
+                    </div>
+
+                    {/* TABS */}
+                    <div className="flex w-full bg-gray-100 border-b">
+                      <button
+                        onClick={() => setActiveTab("categories")}
+                        className={`w-1/2 py-3 text-center text-sm font-semibold tracking-wide transition-all
+          ${
+            activeTab === "categories"
+              ? "bg-white text-gray-900 border-b-2 border-[#f69224]"
+              : "text-gray-500"
+          }`}
+                      >
+                        Categories
+                      </button>
+
+                      <button
+                        onClick={() => setActiveTab("nav")}
+                        className={`w-1/2 py-3 text-center text-sm font-semibold tracking-wide transition-all
+          ${
+            activeTab === "nav"
+              ? "bg-white text-gray-900 border-b-2 border-[#f69224]"
+              : "text-gray-500"
+          }`}
+                      >
+                        Menu
+                      </button>
+                    </div>
+
+                    {/* CONTENT AREA */}
+                    <div className="flex-1 p-5 overflow-y-auto animate-[fadeIn_0.35s_ease]">
+                      {/* CATEGORY LIST */}
+                      {activeTab === "categories" && (
+                        <div className="space-y-1">
+                          {categories?.map((cat, idx) => (
+                            <Link
+                              key={idx}
+                              href={`/shop/${cat?.slug}`}
+                              onClick={() => setOpen(false)}
+                              className="flex items-center justify-between py-3 px-3   border-b
+                hover:border-[#f69224] hover:bg-[#fff5ec] transition-all "
+                            >
+                              <span className="text-gray-700 font-medium text-sm">
+                                {cat?.name}
+                              </span>
+                              <ChevronRight className="w-4 h-4 text-gray-400" />
+                            </Link>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* NAVIGATION LIST */}
+                      {activeTab === "nav" && (
+                        <div>
+                          <div className="space-y-1">
+                            {navLinks?.map((link) => (
+                              <Link
+                                key={link.name}
+                                href={link.href}
+                                onClick={() => setOpen(false)}
+                                className={`flex items-center justify-between py-3 px-3   border-b
+                   transition-all
+                  ${
+                    pathname === link.href
+                      ? "border-[#f69224] bg-[#fff5ec] text-gray-900 font-semibold"
+                      : "text-gray-700 hover:border-[#f69224] hover:bg-[#fff5ec]"
+                  }`}
+                              >
+                                <span className="text-sm">{link.name}</span>
+                                <ChevronRight className="w-4 h-4 text-gray-400" />
+                              </Link>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
 
-                  <nav className="flex flex-col gap-4">
-                    {navLinks.map((link) => (
-                      <Link
-                        key={link.name}
-                        href={link.href}
-                        onClick={() => setOpen(false)}
-                        className={`text-base font-medium transition-colors duration-300 ${
-                          pathname === link.href
-                            ? "text-black"
-                            : "text-gray-700 hover:text-[#f69224]"
-                        }`}
-                      >
-                        {link.name}
-                      </Link>
-                    ))}
-                  </nav>
+                  {/* keyframes */}
+                  <style jsx>{`
+                    @keyframes fadeIn {
+                      from {
+                        opacity: 0;
+                        transform: translateY(6px);
+                      }
+                      to {
+                        opacity: 1;
+                        transform: translateY(0);
+                      }
+                    }
+                  `}</style>
                 </SheetContent>
               </Sheet>
             </div>

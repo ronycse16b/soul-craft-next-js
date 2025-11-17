@@ -239,7 +239,7 @@ const CartPage = () => {
 
             <Button
               onClick={handleCheckout}
-              className="mt-6 w-full  bg-gradient-to-b from-[#f62424] to-[#f62424] text-white py-6 rounded-none font-semibold  transition-all duration-300"
+              className="mt-6 w-full  bg-gradient-to-b from-[#f62424] to-[#f62424] text-white py-6 rounded-full font-semibold  transition-all duration-300"
             >
               Proceed to Checkout ({cartItems.length})
             </Button>

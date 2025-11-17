@@ -262,7 +262,7 @@ const handleImageChange = async (e) => {
     toast.success(`${validFiles.length} file(s) uploaded successfully!`);
   } catch (err) {
     console.error("Upload Error:", err);
-    toast.error("An error occurred while uploading images.");
+    toast.error("Max file size is 1MB Try Again");
   } finally {
     setUploading(false);
   }

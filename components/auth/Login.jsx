@@ -25,7 +25,6 @@ export default function Login() {
     },
   });
 
-  // ✅ Validate Bangladeshi number pattern
   const validateEmailOrPhone = (value) => {
     const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
     const isBDPhone = /^(?:\+88|88)?01[3-9]\d{8}$/.test(value);
@@ -44,16 +43,14 @@ export default function Login() {
       });
 
       if (res?.error) {
-        // toast.error("Invalid credentials");
-        setError('Invalid credentials');
+        setError("Invalid credentials");
       } else {
         const session = await getSession();
-        if (session?.user?.role === "admin" || session?.user?.role === "moderator") {
-
-          toast.success("Logged in successfully",{
-            position: "top-right",
-          });
-         
+        if (
+          session?.user?.role === "admin" ||
+          session?.user?.role === "moderator"
+        ) {
+          toast.success("Logged in successfully", { position: "top-right" });
           router.push("/dashboard");
         } else {
           router.push("/account");
@@ -61,58 +58,72 @@ export default function Login() {
       }
     } catch (error) {
       console.error("Sign-in error:", error);
-      // toast.error("Something went wrong");
-      setError('Something went wrong');
+      setError("Something went wrong");
     }
   };
 
   return (
-    <section className="w-full min-h-[80vh] bg-white flex items-center">
-      <Container className="flex flex-col-reverse md:flex-row justify-between items-center gap-10 py-8">
-        {/* Left Side Image */}
+    <section className="w-full min-h-[80vh] bg-gradient-to-t from-white to-gray-100 flex items-center sm:py-10">
+      <Container className="w-full flex flex-col-reverse md:flex-row justify-between items-center gap-10 px-1 ">
+        {/* Left Image */}
         <div className="flex justify-center w-full md:w-1/2">
           <Image
             src="/auth.png"
-            alt="E-commerce Illustration"
-            width={500}
-            height={500}
-            className="object-contain"
+            alt="Login Illustration"
+            width={480}
+            height={480}
+            className="object-contain drop-shadow-lg"
           />
         </div>
 
-        {/* Right Side Form */}
-        <div className="w-full sm:p-8 p-2 max-w-md">
-          <h2 className="text-2xl font-bold mb-2">
-            Log in to <span className="text-primary">Soul Craft</span>
+        {/* Login Box */}
+        <div className="w-full max-w-md bg-white md:rounded-md shadow-black md:shadow-2xl p-8 ">
+          <h2 className="text-3xl font-bold text-gray-800 mb-2 tracking-tight">
+            Welcome Back
           </h2>
-          <p className="text-sm text-gray-600 mb-6">Enter your details below</p>
 
-          <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
-            {/* Email or Mobile */}
+          <p className="text-sm text-gray-600 mb-6">
+            Log in to{" "}
+            <span className="text-primary font-semibold">Soul Craft</span>
+          </p>
 
-            {error && <p className="text-sm text-red-500 bg-red-100 p-2 font-bold animate-pulse italic shadow">{error}</p>}
-            <div className="flex flex-col space-y-2">
+          {/* Error */}
+          {error && (
+            <p className="text-sm text-red-600 bg-red-100 p-2 rounded mb-3 font-medium shadow-sm animate-pulse">
+              {error}
+            </p>
+          )}
+
+          <form className="space-y-5" onSubmit={handleSubmit(onSubmit)}>
+            {/* Email / Phone */}
+            <div className="flex flex-col space-y-1">
+              <label className="text-gray-700 text-sm font-medium">
+                Email / Mobile
+              </label>
               <input
                 type="text"
-                placeholder="Email or Mobile Number"
+                placeholder="Enter your email or mobile number"
                 {...register("emailOrPhone", {
                   required: "Email or Mobile is required",
                   validate: validateEmailOrPhone,
                 })}
-                className="w-full border-b px-3 border-gray-300 focus:outline-none focus:border-[#f69224] py-2"
+                className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:border-primary focus:outline-none transition"
               />
               {errors.emailOrPhone && (
-                <p className="text-sm text-red-500">
+                <p className="text-xs text-red-500">
                   {errors.emailOrPhone.message}
                 </p>
               )}
             </div>
 
             {/* Password */}
-            <div className="flex flex-col space-y-2">
+            <div className="flex flex-col space-y-1">
+              <label className="text-gray-700 text-sm font-medium">
+                Password
+              </label>
               <input
                 type="password"
-                placeholder="Password"
+                placeholder="Enter your password"
                 {...register("password", {
                   required: "Password is required",
                   minLength: {
@@ -120,49 +131,46 @@ export default function Login() {
                     message: "Password must be at least 6 characters",
                   },
                 })}
-                className="w-full border-b px-3 border-gray-300 focus:outline-none focus:border-[#f69224] py-2"
+                className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:border-primary focus:outline-none transition"
               />
               {errors.password && (
-                <p className="text-sm text-red-500">
+                <p className="text-xs text-red-500">
                   {errors.password.message}
                 </p>
               )}
             </div>
 
-            {/* Buttons */}
-            <div className="flex flex-col gap-4">
-              <Button
-                type="submit"
-                disabled={isSubmitting}
-                className="bg-destructive hover:bg-destructive/90 text-white font-semibold rounded px-6 py-2 w-full"
-              >
-                {isSubmitting ? "Logging in..." : "Log In Now"}
-              </Button>
+            {/* Login Button */}
+            <Button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full py-2 rounded-lg bg-primary hover:bg-primary/90 text-white font-semibold shadow-md"
+            >
+              {isSubmitting ? "Logging in..." : "Log In"}
+            </Button>
 
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full flex justify-center items-center gap-2 rounded-none cursor-pointer border"
-                onClick={() => signIn("google", { callbackUrl: "/account" })}
-              >
-                <Image src="/google.png" alt="Google" width={20} height={20} />
-                Continue with Google
-              </Button>
-            </div>
-
-            {/* Footer Links */}
-            <div className="flex flex-col md:flex-row justify-between items-center mt-4">
-              <p className="text-sm">
-                Don’t have an account?{" "}
-                <Link
-                  href="/auth/sign-up"
-                  className="text-[#f69224] font-medium hover:underline"
-                >
-                  Sign up now
-                </Link>
-              </p>
-            </div>
+            {/* Google Login */}
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full flex items-center justify-center gap-2 border-gray-300 py-2 rounded-lg shadow-sm hover:bg-gray-50"
+              onClick={() => signIn("google", { callbackUrl: "/account" })}
+            >
+              <Image src="/google.png" alt="Google" width={20} height={20} />
+              Continue with Google
+            </Button>
           </form>
+
+          {/* Footer */}
+          <p className="text-center text-sm mt-6 text-gray-600">
+            Don’t have an account?{" "}
+            <Link
+              href="/auth/sign-up"
+              className="text-primary font-semibold hover:underline"
+            >
+              Sign up now
+            </Link>
+          </p>
         </div>
       </Container>
     </section>

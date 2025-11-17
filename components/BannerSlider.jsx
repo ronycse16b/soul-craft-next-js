@@ -34,6 +34,7 @@ export default function BannerSlider() {
     },
     staleTime: 1000 * 60 * 5,
     cacheTime: 1000 * 60 * 30,
+    keepPreviousData: true,
   });
 
   // ✅ Fetch dynamic categories
@@ -52,6 +53,7 @@ export default function BannerSlider() {
     },
     staleTime: 1000 * 60 * 5,
     cacheTime: 1000 * 60 * 30,
+    keepPreviousData: true,
   });
 
   // ✅ Elegant Spinner Component

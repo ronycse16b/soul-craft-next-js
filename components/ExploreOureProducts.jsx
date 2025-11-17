@@ -33,6 +33,10 @@ export default function ExploreProducts() {
       const json = await res.json();
       return json.categories || [];
     },
+    keepPreviousData: true,
+    onSuccess: (data) => {
+      if (data.length > 8) setShowAllCats(true);
+    },
   });
 
   const { data: productsData, isLoading: prodLoading } = useQuery({

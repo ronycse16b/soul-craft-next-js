@@ -1,20 +1,24 @@
 "use client";
 
-import { signOut, useSession } from "next-auth/react";
-import React, { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { toast } from "react-hot-toast";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
+import { Pencil, Trash } from "lucide-react";
+import { signOut, useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
+import { toast } from "react-hot-toast";
+import Container from "./Container";
+import { Button } from "./ui/button";
+import Image from "next/image";
 
-// ------------------------ FETCH HELPERS ------------------------
+// ================= FETCH HELPERS =================
 const fetchOrders = async ({ queryKey }) => {
-  const [_key, { status, page, limit }] = queryKey;
+  const [_key, { status, page, limit, phone }] = queryKey;
   const res = await axios.get(
-    `${process.env.NEXT_PUBLIC_BASE_URL}/api/order/user?status=${status}&page=${page}&limit=${limit}`
+    `${process.env.NEXT_PUBLIC_BASE_URL}/api/order/user?phone=${phone}&status=${status}&page=${page}&limit=${limit}`
   );
-  return res.data;
+  return res.data?.data || [];
 };
 
 const fetchAddresses = async () => {
@@ -24,6 +28,7 @@ const fetchAddresses = async () => {
   return res.data;
 };
 
+// ================= MAIN COMPONENT =================
 const AccountPage = () => {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -32,12 +37,13 @@ const AccountPage = () => {
   const user = session?.user || {};
   const isLoading = status === "loading";
   const isAuthenticated = status === "authenticated";
+  const [showAddressForm, setShowAddressForm] = useState(false);
 
-  const { register, handleSubmit, setValue, watch, reset } = useForm({
+
+  const { register, handleSubmit, setValue, watch } = useForm({
     defaultValues: {
       name: "",
       emailOrPhone: "",
-      currentPassword: "",
       newPassword: "",
       confirmPassword: "",
       activeTab: "profile",
@@ -53,73 +59,75 @@ const AccountPage = () => {
     if (!isLoading && !isAuthenticated) router.push("/auth/sign-in");
   }, [isLoading, isAuthenticated, router]);
 
-  // Prefill user data
+  // Prefill profile inputs
   useEffect(() => {
     if (isAuthenticated && user) {
-      setValue("name", user.name || "");
-      setValue("emailOrPhone", user.emailOrPhone || "");
+      setValue("name", user.name);
+      setValue("emailOrPhone", user.emailOrPhone);
     }
   }, [user, isAuthenticated, setValue]);
 
-  // ------------------------ PROFILE UPDATE ------------------------
+  // ============ PROFILE UPDATE =============
   const onSubmit = async (data) => {
     try {
       if (data.newPassword && data.newPassword !== data.confirmPassword)
-        return toast.error("New passwords do not match!");
+        return toast.error("New passwords do not match");
 
       const payload = {
         name: data.name,
-        currentPassword:
-          user?.isGoogle && !user?.hasPassword
-            ? undefined
-            : data.currentPassword,
         newPassword: data.newPassword,
-        setPassword: user?.isGoogle && !user?.hasPassword,
       };
 
       const res = await axios.put(
         `${process.env.NEXT_PUBLIC_BASE_URL}/api/auth/profile/${user.id}`,
         payload
       );
+
       if (res.data.success) {
-        toast.success("Profile updated successfully!");
+        toast.success("Profile updated! Please login again.");
         signOut({ callbackUrl: "/auth/sign-in" });
-      } else toast.error(res.data.message || "Failed to update profile.");
+      } else toast.error(res.data.message);
     } catch (err) {
-      toast.error(err.response?.data?.message || "Something went wrong.");
+      toast.error("Profile update failed");
     }
   };
 
-  // ------------------------ ORDERS ------------------------
-  const { data: ordersData } = useQuery({
+  // ============ ADDRESSES QUERY =============
+  const { data: addressData, isFetching: addressLoading } = useQuery({
+    queryKey: ["addresses"],
+    queryFn: fetchAddresses,
+    enabled: activeTab === "address" || activeTab === "orders",
+  });
+
+  // Extract default phone
+  const defaultPhone = useMemo(() => {
+    return (
+      addressData?.addresses?.find((a) => a.isDefault)?.phone ||
+      user?.emailOrPhone ||
+      ""
+    );
+  }, [addressData, user]);
+
+  // ============ ORDERS QUERY =============
+  const { data: ordersData, isFetching: ordersLoading } = useQuery({
     queryKey: [
       "orders",
       {
         status: activeTab === "cancellations" ? "Cancelled" : "Processing",
         page,
         limit,
+        phone: defaultPhone,
       },
     ],
     queryFn: fetchOrders,
     keepPreviousData: true,
+    enabled: activeTab === "orders" || activeTab === "cancellations",
   });
 
-  // ------------------------ ADDRESSES ------------------------
-  const { data: addressData, isFetching: addressLoading } = useQuery({
-    queryKey: ["addresses"],
-    queryFn: fetchAddresses,
-    enabled: activeTab === "address",
-    keepPreviousData: true,
-  });
-
-  const addAddressMutation = useMutation({
-    mutationFn: async (data) => {
-      const res = await axios.post(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/api/user/address`,
-        data
-      );
-      return res.data;
-    },
+  // ============ ADDRESS MUTATIONS ============
+  const addAddress = useMutation({
+    mutationFn: (data) =>
+      axios.post(`${process.env.NEXT_PUBLIC_BASE_URL}/api/user/address`, data),
     onSuccess: () => {
       queryClient.invalidateQueries(["addresses"]);
       toast.success("Address added!");
@@ -127,354 +135,440 @@ const AccountPage = () => {
     onError: () => toast.error("Failed to add address"),
   });
 
-  const updateAddressMutation = useMutation({
-    mutationFn: async ({ id, data }) => {
-      const res = await axios.put(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/api/user/address`,
-        { id, ...data }
-      );
-      return res.data;
-    },
+  const updateAddress = useMutation({
+    mutationFn: ({ id, data }) =>
+      axios.put(`${process.env.NEXT_PUBLIC_BASE_URL}/api/user/address`, {
+        id,
+        ...data,
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries(["addresses"]);
-      toast.success("Address updated!");
+      toast.success("Updated!");
     },
-    onError: () => toast.error("Update failed"),
   });
 
-  const deleteAddressMutation = useMutation({
-    mutationFn: async (id) => {
-      const res = await axios.delete(
+  const deleteAddress = useMutation({
+    mutationFn: (id) =>
+      axios.delete(
         `${process.env.NEXT_PUBLIC_BASE_URL}/api/user/address?id=${id}`
-      );
-      return res.data;
-    },
+      ),
     onSuccess: () => {
       queryClient.invalidateQueries(["addresses"]);
-      toast.success("Address deleted!");
+      toast.success("Deleted!");
     },
-    onError: () => toast.error("Delete failed"),
   });
 
-  const setDefaultMutation = useMutation({
-    mutationFn: async (id) => {
-      const res = await axios.put(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/api/user/address`,
-        {
-          id,
-          setDefault: true,
-        }
-      );
-      return res.data;
-    },
+  const setDefaultAddress = useMutation({
+    mutationFn: (id) =>
+      axios.put(`${process.env.NEXT_PUBLIC_BASE_URL}/api/user/address`, {
+        id,
+        setDefault: true,
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries(["addresses"]);
-      toast.success("Default address set!");
+      toast.success("Default updated!");
     },
-    onError: () => toast.error("Failed to set default"),
   });
 
-  // ------------------------ ADDRESS FORM ------------------------
+  // Address form
   const {
-    register: addressRegister,
-    handleSubmit: handleAddressSubmit,
-    reset: resetAddress,
-    formState: { errors },
+    register: addr,
+    handleSubmit: submitAddr,
+    reset: resetAddr,
   } = useForm({
-    defaultValues: { name: "", deliveryAddress: "", phone: "", label: "Home" },
+    defaultValues: {
+      name: "",
+      phone: "",
+      deliveryAddress: "",
+      label: "Home",
+    },
   });
 
   const [editingAddress, setEditingAddress] = useState(null);
 
   const onAddressSubmit = (data) => {
     if (editingAddress) {
-      updateAddressMutation.mutate({ id: editingAddress._id, data });
-      setEditingAddress(null);
+      updateAddress.mutate({
+        id: editingAddress._id,
+        data,
+      });
     } else {
-      addAddressMutation.mutate(data);
+      addAddress.mutate(data);
     }
-    resetAddress({ name: "", deliveryAddress: "", phone: "", label: "Home" });
+    setEditingAddress(null);
+    resetAddr();
   };
 
-  // ------------------------ SIDEBAR ------------------------
-  const sidebarGroups = [
-    {
-      title: "Manage My Account",
-      items: [
-        { id: "profile", label: "Profile Settings" },
-        { id: "address", label: "Address Book" },
-        { id: "orders", label: "My Orders" },
-        { id: "cancellations", label: "Cancellations" },
-      ],
-    },
-  ];
-
-  // ------------------------ MOBILE TAB BUTTONS ------------------------
-  const tabButtons = [
+  // ================== SIDEBAR MENU ==================
+  const menu = [
     { id: "profile", label: "Profile" },
-    { id: "address", label: "Address" },
-    { id: "orders", label: "Orders" },
+    { id: "address", label: "Address Book" },
+    { id: "orders", label: "My Orders" },
+    { id: "cancellations", label: "Cancellations" },
   ];
 
-  // ------------------------ RENDER ------------------------
   if (isLoading)
     return (
-      <div className="min-h-[70vh] flex justify-center items-center text-lg font-medium">
-       ...
+      <div className="min-h-[60vh] flex justify-center items-center text-sm">
+        Loading...
       </div>
     );
 
   return (
-    <div className="max-w-6xl mx-auto p-1 sm:p-6 lg:p-8">
-      {/* Mobile Tabs */}
-      <div className="flex md:hidden mb-4 border-b overflow-x-auto no-scrollbar">
-        {tabButtons.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setValue("activeTab", tab.id)}
-            className={`px-4 py-2 flex-shrink-0 text-sm font-medium border-b-2 transition ${
-              activeTab === tab.id
-                ? "border-red-600 text-red-600"
-                : "border-transparent text-gray-600"
-            }`}
+    <Container className=" mx-auto grid md:grid-cols-4 gap-6 px-2">
+      {/* ===== MOBILE TAB ButtonS ===== */}
+      <h2 className="text-xl font-bold mb-5 sm:hidden text-center">
+        My Account
+      </h2>
+      <div className="md:hidden grid grid-cols-3 gap-1 mb-4">
+        {menu?.map((m) => (
+          <Button
+            key={m.id}
+            className={`px-4 py-2 rounded-full whitespace-nowrap font-medium text-xs border transition
+              ${
+                activeTab === m.id
+                  ? "bg-red-600 text-white border-red-600 shadow"
+                  : "bg-gray-100 text-gray-700 border-gray-300"
+              }`}
+            onClick={() => setValue("activeTab", m.id)}
           >
-            {tab.label}
-          </button>
+            {m.label}
+          </Button>
         ))}
+
+        <Button
+          onClick={() => signOut({ callbackUrl: "/auth/sign-in" })}
+          className="px-4 py-2 text-xs rounded-full whitespace-nowrap font-medium border border-gray-300 bg-gray-200 text-red-600 hover:bg-gray-300 transition"
+        >
+          Logout
+        </Button>
       </div>
 
-      <div className="grid md:grid-cols-4 gap-6">
-        {/* Sidebar (hidden on mobile) */}
-        <aside className="hidden md:block md:col-span-1 border-r pr-4">
-          {sidebarGroups.map((group, i) => (
-            <div key={i} className="mb-6">
-              <h3 className="text-lg font-semibold mb-2 text-gray-800">
-                {group.title}
-              </h3>
-              <ul className="space-y-2 text-sm">
-                {group.items.map((item) => (
-                  <li
-                    key={item.id}
-                    onClick={() => setValue("activeTab", item.id)}
-                    className={`cursor-pointer rounded px-2 py-1 transition ${
-                      activeTab === item.id
-                        ? "text-red-600 font-medium bg-red-50"
-                        : "text-gray-600 hover:text-black"
-                    }`}
-                  >
-                    {item.label}
-                  </li>
-                ))}
-              </ul>
-            </div>
+      {/* ===== DESKTOP SIDEBAR ===== */}
+      <aside className="hidden md:block   p-5 border-r ">
+        <h2 className="text-xl font-bold mb-5">My Account</h2>
+
+        <ul className="space-y-2">
+          {menu.map((m) => (
+            <li
+              key={m.id}
+              onClick={() => setValue("activeTab", m.id)}
+              className={`px-4 py-1 rounded-full cursor-pointer transition-all
+                ${
+                  activeTab === m.id
+                    ? "bg-red-600 text-white shadow font-semibold"
+                    : "hover:bg-gray-100 text-gray-700"
+                }`}
+            >
+              {m.label}
+            </li>
           ))}
-        </aside>
 
-        {/* Main Section */}
-        <section className="md:col-span-3 bg-white rounded-md shadow p-4 sm:p-6">
-          <div className="flex justify-between mb-6">
-            <div className="text-sm text-gray-500">Home / My Account</div>
-            <div className="text-sm font-medium text-red-600">
-              Welcome! {user?.name || "User"}
+          <li
+            onClick={() => signOut({ callbackUrl: "/auth/sign-in" })}
+            className="mt-4 px-4 py-2 rounded-lg cursor-pointer   text-red-600 hover:bg-gray-100 font-medium transition delay-100"
+          >
+            Logout
+          </li>
+        </ul>
+      </aside>
+
+      {/* ===== MAIN CONTENT ===== */}
+      <section className="md:col-span-3 bg-white  md:p-6 ">
+        {/* ================= PROFILE ================= */}
+        {activeTab === "profile" && (
+          <form
+            className="space-y-6 bg-white p-6 rounded-2xl md:shadow-lg border border-gray-200"
+            onSubmit={handleSubmit(onSubmit)}
+          >
+            <h2 className="text-2xl font-bold text-gray-800 mb-4">
+              Edit Profile
+            </h2>
+
+            {/* Profile Image */}
+            <div className="flex items-center gap-4">
+              <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-red-600">
+                <img
+                  src={user.image || "/default-avatar.png"}
+                  alt="Profile"
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div>
+                <p className="font-medium text-gray-700">{user.name}</p>
+                <p className="text-sm text-gray-500">{user.emailOrPhone}</p>
+              </div>
             </div>
-          </div>
 
-          {/* Profile Tab */}
-          {activeTab === "profile" && (
-            <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
-              <h2 className="text-xl font-bold mb-4">Edit Your Profile</h2>
+            {/* Inputs */}
+            <div className="grid gap-4 md:grid-cols-2">
               <input
                 {...register("name")}
                 placeholder="Full Name"
-                className="border px-4 py-2 rounded w-full"
+                className="border px-4 py-2 rounded-lg w-full focus:ring-2 focus:ring-red-200 transition "
               />
+
               <input
                 {...register("emailOrPhone")}
                 disabled
-                className="border px-4 py-2 rounded w-full bg-gray-100"
+                className="border px-4 py-2 rounded-lg w-full bg-gray-100 text-gray-500"
               />
+
               <input
                 {...register("newPassword")}
                 type="password"
                 placeholder="New Password"
-                className="border px-4 py-2 rounded w-full"
+                className="border px-4 py-2 rounded-lg w-full focus:ring-2 focus:ring-red-200 transition "
               />
+
               <input
                 {...register("confirmPassword")}
                 type="password"
                 placeholder="Confirm Password"
-                className="border px-4 py-2 rounded w-full"
+                className="border px-4 py-2 rounded-lg w-full focus:ring-2 focus:ring-red-200 transition "
               />
-              <div className="flex gap-3 justify-end">
-                <button
-                  type="button"
-                  onClick={() => reset()}
-                  className="px-6 py-2 border rounded"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-6 py-2 bg-red-600 text-white rounded hover:bg-red-500"
-                >
-                  Save
-                </button>
-              </div>
-            </form>
-          )}
+            </div>
 
-          {/* Address Book */}
-          {activeTab === "address" && (
-            <div>
-              <h2 className="text-xl font-bold mb-4">My Address Book</h2>
-              {addressLoading ? (
-                <p>...</p>
-              ) : (
-                <div className="space-y-4">
-                  {addressData?.addresses
-                    ?.sort(
-                      (a, b) => (b.isDefault ? 1 : 0) - (a.isDefault ? 1 : 0)
-                    )
-                    .map((addr) => (
-                      <div
-                        key={addr._id}
-                        className={`border p-3 rounded ${
-                          addr.isDefault ? "border-green-500" : ""
-                        }`}
-                      >
-                        <div className="flex justify-between items-center">
-                          <p className="font-medium">{addr.name}</p>
-                          <span className="text-xs bg-gray-100 px-2 py-1 rounded">
-                            {addr.label || "Home"}
-                          </span>
-                        </div>
-                        <p className="text-gray-400 text-sm">{addr.deliveryAddress}</p>
-                        <p className="text-gray-400 text-sm">{addr.phone}</p>
-                        <div className="flex items-center gap-2 mt-2">
-                          {addr.isDefault && (
-                            <span className="text-sm text-green-600 font-semibold">
-                              Default
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex gap-3 mt-3">
-                          <button
-                            onClick={() => {
-                              setEditingAddress(addr);
-                              resetAddress({
-                                name: addr.name,
-                                deliveryAddress: addr.deliveryAddress,
-                                phone: addr.phone,
-                                label: addr.label || "Home",
-                              });
-                            }}
-                            className="px-3 py-1 border rounded text-sm hover:bg-gray-100"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() =>
-                              deleteAddressMutation.mutate(addr._id)
-                            }
-                            className="px-3 py-1 border rounded text-sm hover:bg-gray-100"
-                          >
-                            Delete
-                          </button>
-                          {!addr.isDefault && (
-                            <button
-                              onClick={() =>
-                                setDefaultMutation.mutate(addr._id)
-                              }
-                              className="px-3 py-1 border rounded text-sm text-green-600 hover:bg-green-50"
-                            >
-                              Set Default
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                </div>
-              )}
+            {/* Save Button */}
+            <Button
+              type="submit"
+              className="w-full md:w-1/3 px-6 py-2 bg-red-600 text-white font-semibold rounded-full hover:bg-red-700 transition shadow-lg"
+            >
+              Save Changes
+            </Button>
+          </form>
+        )}
 
-              {/* Add / Edit Form */}
-              <form
-                onSubmit={handleAddressSubmit(onAddressSubmit)}
-                className="mt-6 border-t pt-4 space-y-3"
+        {/* ================= ADDRESS ================= */}
+        {activeTab === "address" && (
+          <>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+              <h2 className="text-2xl font-bold text-gray-800 tracking-wide">
+                Address Book
+              </h2>
+              <Button
+                onClick={() => setShowAddressForm((prev) => !prev)}
+                className="px-5 py-2 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-full shadow-lg hover:scale-105 transform transition-all duration-200"
               >
-                <h3 className="font-semibold">
-                  {editingAddress ? "Edit Address" : "Add New Address"}
+                {showAddressForm ? "Hide Form" : "Add New Address"}
+              </Button>
+            </div>
+
+            {addressLoading ? (
+              <p className="text-gray-500">Loading...</p>
+            ) : (
+              <div className="space-y-5">
+                {addressData?.addresses?.map((a) => (
+                  <div
+                    key={a._id}
+                    className={`p-5  bg-white transition  border ${
+                      a.isDefault ? "border-green-400" : "border-gray-200"
+                    }`}
+                  >
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 sm:gap-0">
+                      <div>
+                        <h4 className="font-semibold text-gray-700 text-lg">
+                          {a.name}
+                        </h4>
+                        <p className="text-sm text-gray-500">{a.phone}</p>
+                        <p className="text-sm text-gray-500">
+                          {a.deliveryAddress}
+                        </p>
+                        {a.isDefault && (
+                          <span className="inline-block mt-2 px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">
+                            Default
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex gap-3 flex-wrap mt-3 sm:mt-0">
+                        <Button
+                          onClick={() => {
+                            setEditingAddress(a);
+                            resetAddr(a);
+                            setShowAddressForm(true);
+                          }}
+                          className="px-4 py-2 transition bg-blue-600  hover:bg-blue-700 delay-100"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+
+                        <Button
+                          onClick={() => deleteAddress.mutate(a._id)}
+                          className="px-4 py-2  text-sm   transition bg-red-600  hover:bg-red-700 delay-100"
+                        >
+                          <Trash className="w-4 h-4" />
+                        </Button>
+
+                        {!a.isDefault && (
+                          <Button
+                            onClick={() => setDefaultAddress.mutate(a._id)}
+                            className="px-4 py-2 border border-green-400 text-green-700 rounded-full text-sm hover:bg-green-50 transition "
+                          >
+                            Set Default
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Add/Edit Form */}
+            {showAddressForm && (
+              <form
+                onSubmit={submitAddr(onAddressSubmit)}
+                className="mt-6 p-6 bg-white space-y-4 border-t border-gray-100 transition-all duration-300"
+              >
+                <h3 className="font-bold text-xl text-gray-800">
+                  {editingAddress ? "Edit Address" : "Add Address"}
                 </h3>
+
                 <input
-                  {...addressRegister("name", { required: "Name required" })}
+                  {...addr("name")}
                   placeholder="Full Name"
-                  className="border px-3 py-2 rounded w-full"
+                  className="w-full border border-gray-200  px-4 py-2  focus:ring-2 focus:ring-red-200 transition"
                 />
-                {errors.name && (
-                  <p className="text-sm text-red-500">{errors.name.message}</p>
-                )}
+
                 <input
-                  {...addressRegister("phone", {
-                    required: "Phone number required",
-                  })}
+                  {...addr("phone")}
                   placeholder="Phone"
-                  className="border px-3 py-2 rounded w-full"
+                  className="w-full border border-gray-200  px-4 py-2  focus:ring-2 focus:ring-red-200 transition"
                 />
-                {errors.phone && (
-                  <p className="text-sm text-red-500">{errors.phone.message}</p>
-                )}
+
                 <textarea
-                  {...addressRegister("deliveryAddress", {
-                    required: "Address required",
-                  })}
+                  {...addr("deliveryAddress")}
                   placeholder="Delivery Address"
-                  className="border px-3 py-2 rounded w-full"
+                  className="w-full border border-gray-200  px-4 py-2  focus:ring-2 focus:ring-red-200 transition resize-none"
+                  rows={3}
                 />
-                {errors.deliveryAddress && (
-                  <p className="text-sm text-red-500">
-                    {errors.deliveryAddress.message}
-                  </p>
-                )}
 
                 <select
-                  {...addressRegister("label")}
-                  className="border px-3 py-2 rounded w-full"
+                  {...addr("label")}
+                  className="w-full border border-gray-200  px-4 py-2  focus:ring-2 focus:ring-red-200 transition"
                 >
-                  <option value="Home">🏠 Home</option>
-                  <option value="Office">🏢 Office</option>
-                  <option value="Other">📦 Other</option>
+                  <option value="Home">Home</option>
+                  <option value="Office">Office</option>
+                  <option value="Other">Other</option>
                 </select>
 
-                <div className="flex justify-end gap-3 mt-3">
-                  {editingAddress && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEditingAddress(null);
-                        resetAddress({
-                          name: "",
-                          deliveryAddress: "",
-                          phone: "",
-                          label: "Home",
-                        });
-                      }}
-                      className="px-4 py-2 border rounded"
-                    >
-                      Cancel
-                    </button>
-                  )}
-                  <button
+                <div className="flex  justify-end">
+                  <Button
                     type="submit"
-                    className="px-6 py-2 bg-red-600 text-white rounded hover:bg-red-500"
+                    className="w-1/4 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-full shadow-lg hover:scale-105 transform transition duration-200 font-semibold"
                   >
-                    {editingAddress ? "Update" : "Add"}
-                  </button>
+                    {editingAddress ? "Update" : "Save"}
+                  </Button>
                 </div>
               </form>
-            </div>
-          )}
-        </section>
-      </div>
-    </div>
+            )}
+          </>
+        )}
+
+        {/* ================= ORDERS ================= */}
+        {activeTab === "orders" && (
+          <>
+            <h2 className="text-xl font-bold mb-5">My Orders</h2>
+
+            {ordersLoading ? (
+              <p>Loading...</p>
+            ) : ordersData?.length ? (
+              <div className="space-y-4">
+                {ordersData?.map((o) => (
+                  <div key={o._id} className="flex flex-col">
+                    <p className="font-semibold text-sm truncate">
+                      #{o.orderNumber}
+                    </p>
+                    <div className="flex flex-wrap items-center gap-2  border-t border-b  transition bg-white sm:max-h-[70px] overflow-hidden">
+                      {/* IMAGE LEFT */}
+                      <div className="w-16 h-16 flex-shrink-0  overflow-hidden ">
+                        <Image
+                          src={o.image}
+                          alt={o.productName}
+                          width={64}
+                          height={64}
+                          className="object-cover w-full h-full"
+                        />
+                      </div>
+
+                      {/* DETAILS CENTER */}
+                      <div className="flex-1 flex flex-col sm:flex-row sm:justify-between items-center gap-1 overflow-hidden">
+                        <div className="flex flex-col sm:flex-row sm:gap-2  overflow-hidden">
+                          <p className="text-gray-700 text-sm font-medium truncate">
+                            {o.productName}
+                          </p>
+                          <p className="text-[10px] text-gray-500 truncate">
+                            SKU: <span className="font-medium">{o.sku}</span>
+                          </p>
+                        </div>
+
+                        <div className="flex gap-2 text-[12px] text-gray-600 sm:text-sm sm:gap-4 flex-wrap">
+                          <p>Qty: {o.qty}</p>
+
+                          {/* <p>Delivery: {o.deliveryCharge} Tk</p> */}
+                          <p>Total: {o.total} Tk</p>
+                        </div>
+
+                        <p className="text-gray-400 text-xs mt-1 sm:mt-0 truncate">
+                          {new Date(o.createdAt).toLocaleString()}
+                        </p>
+                      </div>
+
+                      {/* STATUS RIGHT */}
+                      <div className="w-24 flex-shrink-0 text-right">
+                        <span
+                          className={`px-3 py-1 text-xs font-semibold rounded-full ${
+                            o.status === "Processing"
+                              ? "bg-yellow-100 text-yellow-700"
+                              : o.status === "Delivered"
+                              ? "bg-green-100 text-green-700"
+                              : o.status === "Cancelled"
+                              ? "bg-red-100 text-red-600"
+                              : "bg-gray-100 text-gray-600"
+                          }`}
+                        >
+                          {o.status}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p>No orders found.</p>
+            )}
+          </>
+        )}
+
+        {/* ================= CANCELLATIONS ================= */}
+        {activeTab === "cancellations" && (
+          <>
+            <h2 className="text-xl font-bold">Cancelled Orders</h2>
+
+            {ordersLoading ? (
+              <p>Loading...</p>
+            ) : ordersData?.filter((o) => o.status === "Cancelled")?.length ? (
+              <div className="space-y-3">
+                {ordersData
+                  ?.filter((o) => o.status === "Cancelled")
+                  .map((o) => (
+                    <div
+                      key={o._id}
+                      className="border p-3 rounded-xl shadow-sm bg-red-50"
+                    >
+                      <p className="font-medium">Order #{o.orderNumber}</p>
+                      <p className="text-red-600">Status: {o.status}</p>
+                    </div>
+                  ))}
+              </div>
+            ) : (
+              <p>No cancelled orders.</p>
+            )}
+          </>
+        )}
+      </section>
+    </Container>
   );
 };
 

@@ -41,7 +41,7 @@ export default function NewArrivals() {
         data-aos="fade-up"
         data-aos-delay="100"
       >
-        New Arrival
+        Featured Products
       </h2>
 
       {/* Grid Layout */}
@@ -62,12 +62,12 @@ export default function NewArrivals() {
             />
             <div className="absolute inset-0 bg-black/40 transition-opacity group-hover:bg-black/50" />
             <div className="absolute bottom-3 sm:bottom-5 left-4 sm:left-6 text-white z-10">
-              <h3
+              {/* <h3
                 className="font-semibold leading-tight sm:leading-snug md:leading-normal
-              text-sm sm:text-lg md:text-2xl max-w-[90%] line-clamp-2 break-words"
+              text-sm sm:text-lg  max-w-[90%] "
               >
                 {main.productName}
-              </h3>
+              </h3> */}
             </div>
           </Link>
         )}
@@ -90,12 +90,12 @@ export default function NewArrivals() {
               />
               <div className="absolute inset-0 bg-black/40 transition-opacity group-hover:bg-black/50" />
               <div className="absolute bottom-3 sm:bottom-4 left-4 sm:left-6 text-white">
-                <h3
+                {/* <h3
                   className="font-semibold leading-tight mb-1
                 text-xs sm:text-base md:text-lg max-w-[90%] line-clamp-2 break-words"
                 >
                   {topRight.productName}
-                </h3>
+                </h3> */}
               </div>
             </Link>
           )}
@@ -120,12 +120,12 @@ export default function NewArrivals() {
                     />
                     <div className="absolute inset-0 bg-black/40 transition-opacity group-hover:bg-black/50" />
                     <div className="absolute bottom-3 sm:bottom-4 left-3 sm:left-4 text-white">
-                      <h3
+                      {/* <h3
                         className="font-semibold leading-tight mb-1
                       text-xs sm:text-sm md:text-base max-w-[90%] line-clamp-2 break-words"
                       >
                         {item.productName}
-                      </h3>
+                      </h3> */}
                     </div>
                   </Link>
                 )

@@ -161,7 +161,7 @@ export default function ProductListView({ slug }) {
     <div className="py-8">
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-md font-bold text-destructive">Shop</h1>
+        <h1 className="text-md font-bold text-destructive">Home / Shop</h1>
         <div className="flex items-center gap-3">
           <div className="hidden sm:block">
             <select

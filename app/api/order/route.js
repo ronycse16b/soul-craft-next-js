@@ -1,8 +1,10 @@
 import { adminOnlyMiddleware } from "@/lib/authMiddleware";
 import { connectDB } from "@/lib/db.config";
 import { verifyAccess } from "@/lib/roleMiddleware";
+import AddressBookModel from "@/models/address.book.model";
 
 import Order from "@/models/order.model";
+import userModel from "@/models/user.model";
 import { NextResponse } from "next/server";
 
 export async function POST(req) {
@@ -11,7 +13,7 @@ export async function POST(req) {
 
     const data = await req.json();
 
-    // Basic validation
+    // Required validation
     if (!data?.name || !data?.mobile || !data?.address || !data?.productName) {
       return NextResponse.json(
         { success: false, message: "Missing required fields." },
@@ -19,6 +21,7 @@ export async function POST(req) {
       );
     }
 
+    // Create order
     const newOrder = new Order({
       name: data.name,
       mobile: data.mobile,
@@ -33,12 +36,55 @@ export async function POST(req) {
       size: data.size,
       image: data.image || "",
       note: data.note || "",
+      email: data.email || "",
     });
 
     newOrder.statusHistory.push({ status: "Processing", note: "Order placed" });
     await newOrder.save();
 
-    //  here address name update
+    // ------------------------
+    // 🔥 UPDATE ADDRESS BOOK
+    // ------------------------
+
+    const emailOrPhone = data?.email || data?.mobile;
+
+    const user = await userModel.findOne({
+      emailOrPhone: emailOrPhone,
+    });
+
+    if (user) {
+      let addressBook = await AddressBookModel.findOne({
+        userId: user._id,
+      });
+
+      const newAddress = {
+        name: data.name,
+        deliveryAddress: data.address,
+        phone: data.mobile,
+        label: "Home",
+        isDefault: false,
+      };
+
+      if (!addressBook) {
+        addressBook = new AddressBookModel({
+          userId: user._id,
+          addresses: [newAddress],
+        });
+      } else {
+        const isDuplicate = addressBook.addresses.some(
+          (a) =>
+            a.deliveryAddress === data.address &&
+            a.phone === data.mobile &&
+            a.name === data.name
+        );
+
+        if (!isDuplicate) {
+          addressBook.addresses.push(newAddress);
+        }
+      }
+
+      await addressBook.save();
+    }
 
     return NextResponse.json({
       success: true,
@@ -53,6 +99,7 @@ export async function POST(req) {
     );
   }
 }
+
 
 // ✅ Get Orders (Search, Filter, Pagination)
 export async function GET(req) {
