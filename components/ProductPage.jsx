@@ -25,9 +25,11 @@ import {
 import RelatedProducts from "./RelatedProducts";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { trackAddToCart, trackInitiateCheckout, trackViewContent } from "@/lib/marketingEvents";
-
-
+import {
+  trackAddToCart,
+  trackInitiateCheckout,
+  trackViewContent,
+} from "@/lib/marketingEvents";
 
 function getFinalPrice(product, variant) {
   const isSimple = product.type === "simple";
@@ -57,13 +59,26 @@ function getDiscountPercent(product, variant) {
   return Math.round(((base - final) / base) * 100);
 }
 
-
-
-
-
 export default function ProductPage({ product }) {
   const cartItems = useSelector((state) => state.cart.items);
   const router = useRouter();
+  const [showCartModal, setShowCartModal] = useState(false);
+
+  // Variants & stock
+  const availableVariants =
+    product?.type === "variant"
+      ? product?.variants?.filter((v) => v.quantity > 0) || []
+      : product?.quantity > 0
+      ? [
+          {
+            price: product?.price,
+            discount: product?.discount || 0,
+            quantity: product?.quantity,
+          },
+        ]
+      : [];
+
+  const inStock = availableVariants.length > 0;
 
   const [quantity, setQuantity] = useState(1);
   const [currentImage, setCurrentImage] = useState(
@@ -274,12 +289,7 @@ export default function ProductPage({ product }) {
     setQuantity((prev) => (prev > 1 ? prev - 1 : prev));
   };
 
-
-
-
   const dispatch = useDispatch();
-
-
 
   // Add to cart handler
   const handleAddToCart = () => {
@@ -324,11 +334,13 @@ export default function ProductPage({ product }) {
       availableStock, // 🟢 send stock info to slice
     };
 
-   
     trackAddToCart(payload);
     // ✅ Dispatch safely
     dispatch(addToCart(payload));
-    toast.success("Added to cart");
+    // toast.success("Added to cart");
+
+    // 🟢 Open Modal
+    setShowCartModal(true);
   };
 
   // Direct buy handler
@@ -405,23 +417,22 @@ Could you tell me more about it?`;
   // Example WhatsApp link
   const whatsappLink = `https://wa.me/8801968536050?text=${encodedMessage}`;
 
-  console.log("=== PRICE DEBUG ===");
-  console.log("Type:", product.type);
-  console.log("Variant:", selectedVariant);
-  console.log("Final Price:", finalPrice);
-  console.log("Compare Price:", comparePrice);
-  console.log("Discount %:", percentageOff);
-  console.log("=====================");
-
+  // console.log("=== PRICE DEBUG ===");
+  // console.log("Type:", product.type);
+  // console.log("Variant:", selectedVariant);
+  // console.log("Final Price:", finalPrice);
+  // console.log("Compare Price:", comparePrice);
+  // console.log("Discount %:", percentageOff);
+  // console.log("=====================");
 
   return (
     <div className="p-1 md:p-6 space-y-8 max-w-7xl mx-auto">
       <div className="flex flex-col md:flex-row gap-8">
         {/* Left Images */}
-        <div className="lg:flex-row flex flex-col-reverse gap-4 w-full md:w-1/2">
+        <div className="lg:flex-row flex flex-col-reverse gap-4 w-full md:w-[50%]">
           {/* Thumbnails */}
           <div className="flex md:flex-col gap-2">
-            {product?.images?.map((img, i) => (
+            {product?.images?.slice(0, 5)?.map((img, i) => (
               <div
                 key={i}
                 className={`relative w-16 h-16 md:w-20 md:h-20 rounded-md border cursor-pointer transition-all overflow-hidden ${
@@ -548,23 +559,51 @@ Could you tell me more about it?`;
           </div>
 
           {/* Actions */}
-          <div className="flex flex-col sm:flex-row gap-3">
-            {/* Buy Now Button */}
-            <Button
-              onClick={handleBuyNow}
-              className="w-full sm:w-1/2 py-6 px-6 bg-gradient-to-r from-[#f69224] to-[#fbb034] hover:from-[#e07b1c] hover:to-[#f69224] text-white font-semibold rounded-lg shadow-lg transition-all duration-300 transform hover:scale-105"
-            >
-              Buy Now
-            </Button>
+          {/* Actions */}
+          <div className="flex flex-col sm:flex-row gap-3 mt-4 items-center">
+            {/* Out of Stock Badge */}
+            {!inStock && (
+              <p className="w-full text-center text-red-600 font-semibold bg-red-200 px-4 py-3 animate-pulse shadow-sm">
+                Out of Stock
+              </p>
+            )}
 
-            {/* Add to Cart Button */}
-            <Button
-              onClick={handleAddToCart}
-              variant="outline"
-              className="w-full sm:w-1/2 py-[22px] px-6 border-2 border-[#f69224] text-[#f69224] font-semibold rounded-lg hover:bg-[#f69224] hover:text-white shadow transition-all duration-300 transform hover:scale-105 cursor-pointer"
-            >
-              Add to Cart
-            </Button>
+            {inStock && (
+              <>
+                {" "}
+                {/* Buy Now Button */}
+                <Button
+                  onClick={handleBuyNow}
+                  disabled={!inStock}
+                  className={`
+      w-full sm:w-1/2 py-6 px-6 text-white font-semibold rounded-lg shadow-lg transition-all duration-300 transform 
+      ${
+        inStock
+          ? "bg-gradient-to-r from-[#f69224] to-[#fbb034] hover:from-[#e07b1c] hover:to-[#f69224] hover:scale-105 cursor-pointer"
+          : "bg-gray-400 cursor-not-allowed opacity-70 scale-100"
+      }
+    `}
+                >
+                  Buy Now
+                </Button>
+                {/* Add to Cart Button */}
+                <Button
+                  onClick={handleAddToCart}
+                  variant="outline"
+                  disabled={!inStock}
+                  className={`
+      w-full sm:w-1/2 py-[22px] px-6 font-semibold rounded-lg border-2 shadow transition-all duration-300 transform
+      ${
+        inStock
+          ? "border-[#f69224] text-[#f69224] hover:bg-[#f69224] hover:text-white hover:scale-105 cursor-pointer"
+          : "border-gray-400 text-gray-400 cursor-not-allowed opacity-70 scale-100"
+      }
+    `}
+                >
+                  Add to Cart
+                </Button>
+              </>
+            )}
           </div>
 
           {/* WhatsApp Chat */}
@@ -667,6 +706,83 @@ Could you tell me more about it?`;
         categoryId={product?.subCategory?._id} // category of current product
         excludeId={product?._id} // exclude current product
       />
+
+      <div
+        onClick={() => setShowCartModal(false)}
+        className={`fixed z-[100] w-screen ${
+          showCartModal ? "visible opacity-100" : "invisible opacity-0"
+        } inset-0 grid place-items-center bg-black/20 backdrop-blur-sm duration-100 dark:bg-transparent`}
+      >
+        <div
+          onClick={(e_) => e_.stopPropagation()}
+          className={`absolute max-w-md w-[90%] rounded-xl bg-white p-6 drop-shadow-2xl dark:bg-zinc-900 dark:text-white
+    transition-all transform
+    ${
+      showCartModal
+        ? "opacity-100 translate-y-0 duration-300"
+        : "opacity-0 translate-y-10 duration-150"
+    }
+  `}
+        >
+          {/* Close Button */}
+          <svg
+            onClick={() => setShowCartModal(false)}
+            className="absolute right-3 top-3 w-6 cursor-pointer fill-zinc-600 dark:fill-white hover:opacity-70"
+            viewBox="0 0 24 24"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path d="M6.99486 7.00636C6.60433 7.39689 6.60433 8.03005 6.99486 8.42058L10.58 12.0057L6.99486 15.5909C6.60433 15.9814 6.60433 16.6146 6.99486 17.0051C7.38538 17.3956 8.01855 17.3956 8.40907 17.0051L11.9942 13.4199L15.5794 17.0051C15.9699 17.3956 16.6031 17.3956 16.9936 17.0051C17.3841 16.6146 17.3841 15.9814 16.9936 15.5909L13.4084 12.0057L16.9936 8.42059C17.3841 8.03007 17.3841 7.3969 16.9936 7.00638C16.603 6.61585 15.9699 6.61585 15.5794 7.00638L11.9942 10.5915L8.40907 7.00636C8.01855 6.61584 7.38538 6.61584 6.99486 7.00636Z"></path>
+          </svg>
+
+          {/* Success Icon */}
+          <div className="flex justify-center mb-3">
+            <div className="w-14 h-14 rounded-full bg-green-600 flex shadow-2xl items-center justify-center">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="w-8 h-8 stroke-white"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+            </div>
+          </div>
+
+          {/* Title */}
+          <h1 className="mb-1 text-xl font-bold text-center text-green-600">
+            Added to Cart Successfully!
+          </h1>
+
+          {/* Description */}
+          <p className="mb-5 text-center text-xs opacity-70">
+            Your item has been added to the cart. You can continue shopping or
+            proceed to checkout.
+          </p>
+
+          {/* CTA Buttons */}
+          <div className="flex justify-center gap-3">
+            <Link
+              href="/cart"
+              className="rounded-md bg-red-600 px-6 py-[6px] text-white hover:bg-red-700 transition"
+            >
+              Go to Cart
+            </Link>
+
+            <button
+              onClick={() => setShowCartModal(false)}
+              className="rounded-md border border-gray-400 cursor-pointer sm:px-6 sm:py-[6px] px-2 text-gray-700 dark:text-white hover:bg-gray-100 dark:hover:bg-zinc-800 transition"
+            >
+              Continue Shopping
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

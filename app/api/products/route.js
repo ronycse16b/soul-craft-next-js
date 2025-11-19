@@ -1,4 +1,4 @@
-import { adminOnlyMiddleware } from "@/lib/authMiddleware";
+
 import { connectDB } from "@/lib/db.config";
 import Product from "@/models/product.model";
 import SubCategory from "@/models/SubCategory.js";

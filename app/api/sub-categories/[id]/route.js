@@ -1,5 +1,4 @@
 
-import { adminOnlyMiddleware } from "@/lib/authMiddleware";
 import { connectDB } from "@/lib/db.config";
 import { verifyAccess } from "@/lib/roleMiddleware";
 import SubCategory from "@/models/SubCategory";

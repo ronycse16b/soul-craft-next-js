@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db.config";
 import User from "@/models/user.model";
 import bcrypt from "bcrypt";
-import { adminOnlyMiddleware } from "@/lib/authMiddleware";
+
 import { verifyAccess } from "@/lib/roleMiddleware";
 
 // ✅ GET: All users (with pagination + search)

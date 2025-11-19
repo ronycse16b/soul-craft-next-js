@@ -2,7 +2,7 @@
 
 import { NextResponse } from "next/server";
 
-import { adminOnlyMiddleware } from "@/lib/authMiddleware";
+
 import { connectDB } from "@/lib/db.config";
 import Order from "@/models/order.model";
 import { verifyAccess } from "@/lib/roleMiddleware";

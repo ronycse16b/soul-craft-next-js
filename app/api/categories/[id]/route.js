@@ -2,7 +2,6 @@
 import Category from "@/models/Category";
 import { NextResponse } from "next/server";
 
-import { adminOnlyMiddleware } from "@/lib/authMiddleware";
 import { connectDB } from "@/lib/db.config";
 import { verifyAccess } from "@/lib/roleMiddleware";
 

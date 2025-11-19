@@ -1,12 +1,11 @@
-import { userOnlyMiddleware } from "@/lib/authMiddleware";
+
 import { connectDB } from "@/lib/db.config";
 import AddressBookModel from "@/models/address.book.model";
 import { NextResponse } from "next/server";
 
 // ✅ GET all addresses for logged-in user
 export async function GET(req) {
-  const auth = await userOnlyMiddleware(req);
-  if (auth instanceof Response) return auth;
+
 
   try {
     await connectDB();
@@ -34,8 +33,7 @@ export async function GET(req) {
 
 // ✅ POST → Add new address
 export async function POST(req) {
-  const auth = await userOnlyMiddleware(req);
-  if (auth instanceof Response) return auth;
+
 
   try {
     await connectDB();
@@ -80,8 +78,7 @@ export async function POST(req) {
 
 // ✅ PUT → Update an address
 export async function PUT(req) {
-  const auth = await userOnlyMiddleware(req);
-  if (auth instanceof Response) return auth;
+
 
   try {
     await connectDB();
@@ -127,8 +124,7 @@ export async function PUT(req) {
 
 // ✅ DELETE → Remove address by ?id=
 export async function DELETE(req) {
-  const auth = await userOnlyMiddleware(req);
-  if (auth instanceof Response) return auth;
+
 
   try {
     await connectDB();

@@ -1,4 +1,4 @@
-import { userOnlyMiddleware } from "@/lib/authMiddleware";
+
 import Order from "@/models/order.model";
 import { connectDB } from "@/lib/db.config";
 import { NextResponse } from "next/server";

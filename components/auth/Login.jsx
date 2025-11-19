@@ -63,8 +63,8 @@ export default function Login() {
   };
 
   return (
-    <section className="w-full min-h-[80vh] bg-gradient-to-t from-white to-gray-100 flex items-center sm:py-10">
-      <Container className="w-full flex flex-col-reverse md:flex-row justify-between items-center gap-10 px-1 ">
+    <section className="w-full min-h-[80vh] bg-gradient-to-t from-white to-sky-50/20 flex items-center sm:py-10">
+      <Container className=" flex flex-col-reverse md:flex-row justify-between items-center gap-10 px-1 ">
         {/* Left Image */}
         <div className="flex justify-center w-full md:w-1/2">
           <Image
@@ -77,7 +77,7 @@ export default function Login() {
         </div>
 
         {/* Login Box */}
-        <div className="w-full max-w-md bg-white md:rounded-md shadow-black md:shadow-2xl p-8 ">
+        <div className="w-full max-w-md  md:rounded-md   p-8 ">
           <h2 className="text-3xl font-bold text-gray-800 mb-2 tracking-tight">
             Welcome Back
           </h2>
@@ -150,15 +150,35 @@ export default function Login() {
             </Button>
 
             {/* Google Login */}
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full flex items-center justify-center gap-2 border-gray-300 py-2 rounded-lg shadow-sm hover:bg-gray-50"
-              onClick={() => signIn("google", { callbackUrl: "/account" })}
-            >
-              <Image src="/google.png" alt="Google" width={20} height={20} />
-              Continue with Google
-            </Button>
+          <Button
+                       type="button"
+                       variant="outline"
+                       onClick={() => signIn("google", { callbackUrl: "/account" })}
+                       className="
+             w-full 
+             flex items-center justify-center gap-3 cursor-pointer
+             py-2.5
+             rounded-full
+             border border-gray-300 
+             bg-white
+             shadow-sm 
+             hover:shadow-md 
+             hover:border-gray-400
+             active:scale-[0.97]
+             transition-all duration-200 
+           "
+                     >
+                       <Image
+                         src="/google.png"
+                         alt="Google"
+                         width={22}
+                         height={22}
+                         className="rounded-sm"
+                       />
+                       <span className="text-gray-700 font-semibold tracking-wide">
+                         Continue with Google
+                       </span>
+                     </Button>
           </form>
 
           {/* Footer */}

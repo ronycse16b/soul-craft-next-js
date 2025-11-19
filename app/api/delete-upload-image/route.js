@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import path from "path";
 import fs from "fs/promises";
-import { adminOnlyMiddleware } from "@/lib/authMiddleware";
+
 
  
 
 export async function POST(req) {
   try {
-    await adminOnlyMiddleware(req);
+   
 
     const { filename } = await req.json();
     if (!filename) {

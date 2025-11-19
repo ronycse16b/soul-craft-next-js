@@ -1,4 +1,4 @@
-import { adminOnlyMiddleware } from "@/lib/authMiddleware";
+
 import { connectDB } from "@/lib/db.config";
 import flashModel from "@/models/flash.model";
 import { NextResponse } from "next/server";

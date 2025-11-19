@@ -2,14 +2,7 @@
 
 import axios from "axios";
 import clsx from "clsx";
-import {
-  Box,
-  CheckCircle2,
-  Edit,
-  Loader2,
-  Truck,
-  XCircle
-} from "lucide-react";
+import { Box, CheckCircle2, Edit, Loader2, Truck, XCircle } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
@@ -49,7 +42,6 @@ export default function OrderManagement() {
     cancelled: 0,
   });
 
- 
   const [editLoading, setEditLoading] = useState(false); // New state
   const [statusLoading, setStatusLoading] = useState(false); // New state
   const [showReasonModal, setShowReasonModal] = useState(false);
@@ -220,7 +212,7 @@ export default function OrderManagement() {
             iconBg: "bg-white",
             text: "text-white",
           },
-        ].map((item, i) => (
+        ]?.map((item, i) => (
           <div
             key={i}
             className={`rounded-xl ${item.bg} shadow-lg 2xl:px-6 px-4 flex items-center gap-4 justify-between hover:shadow-md transition min-h-[90px]`}
@@ -496,53 +488,115 @@ export default function OrderManagement() {
         } inset-0 grid place-items-center bg-primary/20 backdrop-blur-sm duration-100 dark:bg-transparent`}
       >
         <div
-          className={`absolute w-[400px] rounded-lg bg-white p-6 drop-shadow-lg dark:bg-zinc-900 dark:text-white ${
-            editOrder
-              ? "opacity-100 duration-300"
-              : "scale-110 opacity-0 duration-150"
-          }`}
+          className={`
+    absolute w-[90%] max-w-xl
+    rounded 
+    bg-white/80 dark:bg-zinc-900/80 
+    backdrop-blur-xl 
+    p-6 
+    shadow-xl 
+    transition-all 
+    cursor-pointer
+    ${
+      editOrder
+        ? "opacity-100 scale-100 duration-300 ease-out"
+        : "opacity-0 scale-110 duration-150 pointer-events-none"
+    }
+  `}
         >
-          <h3 className="text-lg font-bold mb-4">Edit Order</h3>
-          <form onSubmit={handleEditSubmit} className="space-y-3">
+          <h3 className="text-xl font-semibold mb-5 tracking-wide">
+            Edit Order
+          </h3>
+
+          <form
+            onSubmit={handleEditSubmit}
+            className="space-y-4 cursor-default"
+          >
+            {/* Name */}
             <input
-              className="input input-bordered w-full"
+              className="
+        w-full px-3 py-2 rounded-lg 
+        border border-gray-300 dark:border-zinc-700 
+        bg-white dark:bg-zinc-800 
+        focus:ring-2 focus:ring-red-300 dark:focus:ring-red-500 
+        focus:border-red-400 transition-all
+      "
               placeholder="Customer Name"
               value={editOrder?.name}
               onChange={(e) =>
                 setEditOrder({ ...editOrder, name: e.target.value })
               }
             />
+
+            {/* Mobile */}
             <input
-              className="input input-bordered w-full"
+              className="
+        w-full px-3 py-2 rounded-lg
+        border border-gray-300 dark:border-zinc-700 
+        bg-white dark:bg-zinc-800 
+        focus:ring-2 focus:ring-red-300 dark:focus:ring-red-500 
+        focus:border-red-400 transition-all
+      "
               placeholder="Mobile"
               value={editOrder?.mobile}
               onChange={(e) =>
                 setEditOrder({ ...editOrder, mobile: e.target.value })
               }
             />
-            <input
-              className="input input-bordered w-full"
-              placeholder="Address"
+
+            {/* Address */}
+            <textarea
+              className="
+    w-full px-3 py-3 
+    rounded-lg
+    border border-gray-300 dark:border-zinc-700 
+    bg-white dark:bg-zinc-800
+    focus:ring-2 focus:ring-red-300 dark:focus:ring-red-500
+    focus:border-red-400 
+    transition-all
+    resize-none
+    text-sm
+  "
+              rows={3}
+              placeholder="Full Delivery Address"
               value={editOrder?.address}
               onChange={(e) =>
                 setEditOrder({ ...editOrder, address: e.target.value })
               }
             />
-            <div className="flex gap-2 justify-end">
+
+            {/* Buttons */}
+            <div className="flex gap-3 justify-end pt-2">
               <button
                 type="button"
-                className="btn btn-sm btn-outline"
+                className="
+          px-4 py-2 rounded-lg 
+          border border-gray-300 dark:border-zinc-700 
+          text-gray-600 dark:text-gray-300 
+          hover:bg-gray-100 dark:hover:bg-zinc-800 
+          transition-all cursor-pointer
+        "
                 onClick={() => setEditOrder(null)}
               >
                 Cancel
               </button>
+
               <button
                 type="submit"
-                className="btn btn-sm btn-primary"
+                className="
+          px-5 py-2 
+          rounded-lg 
+          bg-red-600 hover:bg-red-700 
+          text-white font-medium 
+          shadow-md 
+          transition-all 
+          cursor-pointer
+          disabled:opacity-60 disabled:cursor-not-allowed
+        "
                 disabled={editLoading}
               >
                 {editLoading ? (
-                  <Loader2 className="animate-spin w-4 h-4" />
+                  <Loader2 className="animate-spin w-4 h-4 mx-auto" />
                 ) : (
                   "Update"
                 )}
@@ -552,32 +606,59 @@ export default function OrderManagement() {
         </div>
       </div>
 
-      {/* {showReasonModal && (
-       
-      )} */}
       <div
         className={`fixed z-[100] w-screen ${
           showReasonModal ? "visible opacity-100" : "invisible opacity-0"
         } inset-0 grid place-items-center bg-primary/20 backdrop-blur-sm duration-100 dark:bg-transparent`}
       >
         <div
-          className={`absolute w-[400px] rounded-lg bg-white p-6 drop-shadow-lg dark:bg-zinc-900 dark:text-white ${
-            showReasonModal
-              ? "opacity-100 duration-300"
-              : "scale-110 opacity-0 duration-150"
-          }`}
+          className={`
+    absolute w-[90%] max-w-md 
+    rounded-md
+    bg-white/80 dark:bg-zinc-900/80 
+    backdrop-blur-xl 
+    p-6 
+    shadow-xl 
+    transition-all  
+    ${
+      showReasonModal
+        ? "opacity-100 scale-100 duration-300 ease-out"
+        : "opacity-0 scale-110 duration-150 pointer-events-none"
+    }
+  `}
         >
-          <h3 className="text-lg font-bold">Provide Reason</h3>
+          <h3 className="text-xl font-semibold mb-3 tracking-wide">
+            Provide Reason
+          </h3>
+
           <textarea
-            className="textarea textarea-bordered w-full"
+            className="
+      w-full 
+      border border-gray-300 dark:border-zinc-700 
+      rounded-lg 
+      px-3 py-2 
+      focus:ring-2 focus:ring-red-300 dark:focus:ring-red-500 
+      focus:border-red-400 
+      transition-all 
+      bg-white dark:bg-zinc-800
+    "
             placeholder="Write reason here..."
             rows={4}
             value={reason}
             onChange={(e) => setReason(e.target.value)}
           />
-          <div className="flex justify-end gap-2 mt-4">
+
+          <div className="flex justify-end gap-3 mt-5">
             <button
-              className="btn btn-sm btn-outline"
+              className="
+        px-4 py-2 
+        rounded-lg 
+        cursor-pointer
+        border border-gray-300 
+        text-gray-600 
+        hover:bg-gray-100 
+        transition-all
+      "
               onClick={() => {
                 setShowReasonModal(false);
                 setReason("");
@@ -586,13 +667,21 @@ export default function OrderManagement() {
             >
               Cancel
             </button>
+
             <button
-              className="btn btn-sm btn-primary"
+              className="
+        px-5 py-2 cursor-pointer
+        rounded-lg 
+        bg-red-600 hover:bg-red-700 
+        text-white font-medium 
+        transition-all shadow-md
+        disabled:opacity-60 disabled:cursor-not-allowed
+      "
               onClick={submitStatusWithReason}
               disabled={statusLoading}
             >
               {statusLoading ? (
-                <Loader2 className="animate-spin w-4 h-4" />
+                <Loader2 className="animate-spin w-4 h-4 mx-auto" />
               ) : (
                 "Submit"
               )}

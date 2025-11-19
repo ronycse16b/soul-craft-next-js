@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db.config";
 import MarketingConfig from "@/models/MarketingConfig.model";
-import { verifyAccess } from "@/lib/roleMiddleware"; // or your adminOnlyMiddleware
+import { verifyAccess } from "@/lib/roleMiddleware"; // 
 
 export async function GET(req) {
   await connectDB();

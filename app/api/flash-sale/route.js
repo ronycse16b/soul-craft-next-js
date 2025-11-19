@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db.config";
 import FlashModel from "@/models/flash.model";
 import Product from "@/models/product.model";
-import { adminOnlyMiddleware } from "@/lib/authMiddleware";
 import { verifyAccess } from "@/lib/roleMiddleware";
 
 
