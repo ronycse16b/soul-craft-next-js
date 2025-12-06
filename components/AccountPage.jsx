@@ -4,13 +4,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import { Pencil, Trash } from "lucide-react";
 import { signOut, useSession } from "next-auth/react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "react-hot-toast";
 import Container from "./Container";
 import { Button } from "./ui/button";
-import Image from "next/image";
 
 // ================= FETCH HELPERS =================
 const fetchOrders = async ({ queryKey }) => {
@@ -38,7 +38,6 @@ const AccountPage = () => {
   const isLoading = status === "loading";
   const isAuthenticated = status === "authenticated";
   const [showAddressForm, setShowAddressForm] = useState(false);
-
 
   const { register, handleSubmit, setValue, watch } = useForm({
     defaultValues: {
@@ -99,30 +98,38 @@ const AccountPage = () => {
     enabled: activeTab === "address" || activeTab === "orders",
   });
 
-  // Extract default phone
-  const defaultPhone = useMemo(() => {
-    return (
-      addressData?.addresses?.find((a) => a.isDefault)?.phone ||
-      user?.emailOrPhone ||
-      ""
-    );
-  }, [addressData, user]);
 
-  // ============ ORDERS QUERY =============
-  const { data: ordersData, isFetching: ordersLoading } = useQuery({
+
+  // ============================
+  // 🔥 FETCH ORDERS
+  // ============================
+  const fetchOrders = async ({ queryKey }) => {
+    const [_key, { status, page, limit, identifier }] = queryKey;
+
+    const res = await axios.get(
+      `${process.env.NEXT_PUBLIC_BASE_URL}/api/order/user?identifier=${identifier}&status=${status}&page=${page}&limit=${limit}`
+    );
+
+    return res.data?.data || {};
+  };
+
+  const { data:ordersData, ordersLoading } = useQuery({
     queryKey: [
       "orders",
       {
-        status: activeTab === "cancellations" ? "Cancelled" : "Processing",
+        status:"",
         page,
         limit,
-        phone: defaultPhone,
+        identifier: session?.user?.emailOrPhone,
       },
     ],
     queryFn: fetchOrders,
     keepPreviousData: true,
-    enabled: activeTab === "orders" || activeTab === "cancellations",
+    
   });
+
+  const orders = ordersData?.data || [];
+  const pagination = ordersData?.pagination || {};
 
   // ============ ADDRESS MUTATIONS ============
   const addAddress = useMutation({
@@ -347,10 +354,10 @@ const AccountPage = () => {
                 Address Book
               </h2>
               <Button
-                onClick={() => setShowAddressForm((prev) => !prev)}
+                onClick={() => setShowAddressForm(true)}
                 className="px-5 py-2 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-full shadow-lg hover:scale-105 transform transition-all duration-200"
               >
-                {showAddressForm ? "Hide Form" : "Add New Address"}
+                Add New Address
               </Button>
             </div>
 
@@ -416,53 +423,80 @@ const AccountPage = () => {
             )}
 
             {/* Add/Edit Form */}
-            {showAddressForm && (
-              <form
-                onSubmit={submitAddr(onAddressSubmit)}
-                className="mt-6 p-6 bg-white space-y-4 border-t border-gray-100 transition-all duration-300"
+
+            <div
+              
+              className={`fixed inset-0 z-[100] w-screen grid place-items-center bg-black/20 backdrop-blur-sm duration-200 ${
+                showAddressForm ? "visible opacity-100" : "invisible opacity-0"
+              }`}
+            >
+              <div
+               
+                className={`relative max-w-xl w-full rounded-lg bg-white p-7 shadow-xl dark:bg-zinc-900 dark:text-white transform transition-all ${
+                  showAddressForm
+                    ? "opacity-100 scale-100 duration-300"
+                    : "opacity-0 scale-110 duration-150"
+                }`}
               >
-                <h3 className="font-bold text-xl text-gray-800">
-                  {editingAddress ? "Edit Address" : "Add Address"}
-                </h3>
+                {/* Close Icon */}
+              
 
-                <input
-                  {...addr("name")}
-                  placeholder="Full Name"
-                  className="w-full border border-gray-200  px-4 py-2  focus:ring-2 focus:ring-red-200 transition"
-                />
-
-                <input
-                  {...addr("phone")}
-                  placeholder="Phone"
-                  className="w-full border border-gray-200  px-4 py-2  focus:ring-2 focus:ring-red-200 transition"
-                />
-
-                <textarea
-                  {...addr("deliveryAddress")}
-                  placeholder="Delivery Address"
-                  className="w-full border border-gray-200  px-4 py-2  focus:ring-2 focus:ring-red-200 transition resize-none"
-                  rows={3}
-                />
-
-                <select
-                  {...addr("label")}
-                  className="w-full border border-gray-200  px-4 py-2  focus:ring-2 focus:ring-red-200 transition"
+                {/* Form */}
+                <form
+                  onSubmit={submitAddr(onAddressSubmit)}
+                  className=" space-y-4 border-t border-gray-100 pt-6 transition-all duration-300"
                 >
-                  <option value="Home">Home</option>
-                  <option value="Office">Office</option>
-                  <option value="Other">Other</option>
-                </select>
+                  <h3 className="text-xl font-bold text-gray-800 dark:text-white">
+                    {editingAddress ? "Edit Address" : "Add Address"}
+                  </h3>
 
-                <div className="flex  justify-end">
-                  <Button
-                    type="submit"
-                    className="w-1/4 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-full shadow-lg hover:scale-105 transform transition duration-200 font-semibold"
+                  <input
+                    {...addr("name")}
+                    placeholder="Full Name"
+                    className="w-full border border-gray-200 px-4 py-2 rounded focus:ring-2 focus:ring-red-200 transition"
+                  />
+
+                  <input
+                    {...addr("phone")}
+                    placeholder="Phone"
+                    className="w-full border border-gray-200 px-4 py-2 rounded focus:ring-2 focus:ring-red-200 transition"
+                  />
+
+                  <textarea
+                    {...addr("deliveryAddress")}
+                    placeholder="Delivery Address"
+                    rows={3}
+                    className="w-full border border-gray-200 px-4 py-2 rounded focus:ring-2 focus:ring-red-200 transition resize-none"
+                  />
+
+                  <select
+                    {...addr("label")}
+                    className="w-full border border-gray-200 px-4 py-2 rounded focus:ring-2 focus:ring-red-200 transition"
                   >
-                    {editingAddress ? "Update" : "Save"}
-                  </Button>
-                </div>
-              </form>
-            )}
+                    <option value="Home">Home</option>
+                    <option value="Office">Office</option>
+                    <option value="Other">Other</option>
+                  </select>
+
+                  {/* Footer Buttons */}
+                  <div className="mt-4 flex justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {setShowAddressForm(false) ,setEditingAddress(null),resetAddr(a)} }
+                      className="rounded-md border shadow-lg cursor-pointer border-rose-600 px-6 py-2 text-rose-600 hover:bg-rose-600 hover:text-white transition"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="w-1/3 py-2 rounded-md bg-green-600 text-white cursor-pointer  shadow-lg hover:scale-105 transform transition duration-200 font-semibold"
+                    >
+                      {editingAddress ? "Update" : "Save Changes"}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
           </>
         )}
 

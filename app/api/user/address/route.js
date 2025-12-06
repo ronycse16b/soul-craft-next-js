@@ -1,11 +1,18 @@
 
 import { connectDB } from "@/lib/db.config";
+import { verifyAccess } from "@/lib/roleMiddleware";
 import AddressBookModel from "@/models/address.book.model";
 import { NextResponse } from "next/server";
 
 // ✅ GET all addresses for logged-in user
 export async function GET(req) {
 
+    const auth = await verifyAccess(req, {
+      roles: ["user"],
+      permission: "read",
+    });
+
+ if (auth instanceof Response) return auth;
 
   try {
     await connectDB();
@@ -34,7 +41,12 @@ export async function GET(req) {
 // ✅ POST → Add new address
 export async function POST(req) {
 
+  const auth = await verifyAccess(req, {
+    roles: ["user"],
+    permission: "create",
+  });
 
+  if (auth instanceof Response) return auth;
   try {
     await connectDB();
     const { name, deliveryAddress, phone, isDefault } = await req.json();
@@ -79,7 +91,12 @@ export async function POST(req) {
 // ✅ PUT → Update an address
 export async function PUT(req) {
 
+  const auth = await verifyAccess(req, {
+    roles: ["user"],
+    permission: "update",
+  });
 
+  if (auth instanceof Response) return auth;
   try {
     await connectDB();
     const { id, name, deliveryAddress, phone, setDefault } = await req.json();
@@ -125,6 +142,12 @@ export async function PUT(req) {
 // ✅ DELETE → Remove address by ?id=
 export async function DELETE(req) {
 
+    const auth = await verifyAccess(req, {
+      roles: ["user"],
+      permission: "delete",
+    });
+
+    if (auth instanceof Response) return auth;
 
   try {
     await connectDB();

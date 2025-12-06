@@ -1,45 +1,51 @@
-
 import Order from "@/models/order.model";
 import { connectDB } from "@/lib/db.config";
 import { NextResponse } from "next/server";
-
-
+import userModel from "@/models/user.model";
+import { verifyAccess } from "@/lib/roleMiddleware";
 
 export async function GET(req) {
+
+
+  const auth = await verifyAccess(req, {
+    roles: ["user"],
+    permission: "read",
+  });
+
+  if (auth instanceof Response) return auth;
+
   try {
     await connectDB();
 
+
     const { searchParams } = new URL(req.url);
 
-    // Pagination
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "10");
 
-    // Filters
     const search = searchParams.get("search") || "";
-    const phone = searchParams.get("phone") || "";
+    const identifier = searchParams.get("identifier") || "";
     const status = searchParams.get("status") || "";
 
-    // -------------------------------
-    // 📌 1. Get Auth User by Phone
-    // -------------------------------
-    // const user = await userModel.findOne({ emailOrPhone: phone });
+  
 
-    // if (!user) {
-    //   return NextResponse.json(
-    //     { success: false, message: "User not found" },
-    //     { status: 404 }
-    //   );
-    // }
+    // 1️⃣ Identifier required
+    if (!identifier) {
+      console.log("❌ Missing identifier");
+      return NextResponse.json(
+        { success: false, message: "Phone or Email is required" },
+        { status: 400 }
+      );
+    }
 
-    // -------------------------------
-    // 📌 2. Build Order Query
-    // -------------------------------
+
+
+    // 3️⃣ Build Order Query
     const query = {
-      mobile: phone,
+      identifier: identifier, // user submitted phone/email
     };
 
-    // 🔍 Search filter
+    // Search Filter
     if (search) {
       query.$or = [
         { name: { $regex: search, $options: "i" } },
@@ -49,27 +55,19 @@ export async function GET(req) {
       ];
     }
 
-    // 🔵 Status Filter
-    if (status) {
-      query.status = status;
-    }
-
-    // -------------------------------
-    // 📌 3. Count Total Orders
-    // -------------------------------
+    // 4️⃣ Count
     const total = await Order.countDocuments(query);
 
-    // -------------------------------
-    // 📌 4. Fetch Paginated Orders
-    // -------------------------------
+
+    // 5️⃣ Paginate Orders
     const orders = await Order.find(query)
-      .sort({ createdAt: -1 }) // latest first
+      .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit);
 
-    // -------------------------------
-    // 📌 5. API Response
-    // -------------------------------
+
+
+    // 6️⃣ Response
     return NextResponse.json({
       success: true,
       data: orders,
@@ -81,11 +79,9 @@ export async function GET(req) {
       },
     });
   } catch (err) {
-    console.error("Order Fetch Error:", err);
     return NextResponse.json(
-      { success: false, message: "Failed to fetch orders" },
+      { success: false, message: "Server Error", error: err.message },
       { status: 500 }
     );
   }
 }
-

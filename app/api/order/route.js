@@ -13,6 +13,8 @@ export async function POST(req) {
 
     const data = await req.json();
 
+    console.log(data);
+
     // Required validation
     if (!data?.name || !data?.mobile || !data?.address || !data?.productName) {
       return NextResponse.json(
@@ -25,6 +27,7 @@ export async function POST(req) {
     const newOrder = new Order({
       name: data.name,
       mobile: data.mobile,
+      identifier:data?.identifier,
       address: data.address,
       deliveryCharge: data.deliveryCharge,
       paymentMethod: data.paymentMethod || "Cash on delivery",

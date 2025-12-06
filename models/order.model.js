@@ -36,6 +36,9 @@ const orderSchema = new mongoose.Schema(
     orderNumber: { type: String, unique: true },
 
     address: { type: String },
+    identifier:{
+      type:String
+    },
     deliveryCharge: { type: Number },
     image: { type: String },
     mobile: { type: String },

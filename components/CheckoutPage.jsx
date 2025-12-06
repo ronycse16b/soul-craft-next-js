@@ -119,6 +119,7 @@ const CheckoutPage = () => {
       const orderPayloads = cartItems.map((item) => ({
         name: data.firstName,
         mobile: data.phone,
+        identifier:session?.user?.emailOrPhone || '',
         address: data.address,
         deliveryCharge: deliveryCharges[data.location] || 0,
         paymentMethod: data.paymentMethod || "Cash on delivery",
